@@ -60,13 +60,14 @@ service cloud.firestore {
              data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.source is string && data.source.size() > 0 && data.source.size() < 100 &&
-             data.profile is string && data.profile.size() > 0 && data.profile.size() < 5000;
+             data.profile is string && data.profile.size() > 0 && data.profile.size() < 5000 &&
+             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() < 1000));
     }
 
     function isValidMessage(data) {
       return data.keys().hasAll(['chatId', 'sender', 'text', 'timestamp']) &&
              data.sender in ['user', 'character'] &&
-             data.text is string && data.text.size() > 0 && data.text.size() < 2000;
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000;
     }
 
     function isAdmin() {
@@ -87,15 +88,18 @@ service cloud.firestore {
     }
 
     match /characters/{characterId} {
-      allow read: if isCharOwner(resource.data) || isAdmin();
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidCharacter(request.resource.data);
-      allow update: if isCharOwner(resource.data) && isValidCharacter(request.resource.data) &&
+      allow update: if (isCharOwner(resource.data) || isAdmin() || 
+                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl']))) && 
+                    isValidCharacter(request.resource.data) &&
                     request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if isCharOwner(resource.data) || isAdmin();
 
       match /messages/{messageId} {
         allow read: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
         allow create: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) && isValidMessage(request.resource.data);
+        allow delete: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
       }
     }
   }

@@ -59,7 +59,8 @@ If your world lacks modern technology, treat the "chat" as a magical phenomenon 
 Do not use modern slang unless your character specifically comes from a modern-day setting.
 
 FORMATTING
-Use asterisks for brief actions or descriptions of your current environment (e.g., sheathes sword).
+STRICT: DO NOT use asterisks (*) for actions or descriptions. Do not describe what you are doing or your surroundings. 
+ONLY output the dialogue/text that ${charName} is saying.
 Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
 
   try {
