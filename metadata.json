@@ -1,0 +1,5 @@
+{
+  "name": "IsekaiChat",
+  "description": "Create and chat with AI versions of your favorite fictional characters. Powered by Gemini.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,79 @@
+import { GoogleGenAI } from "@google/genai";
+
+const getAI = () => {
+  const apiKey = process.env.GEMINI_KEY;
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    throw new Error("Gemini API key is not configured. Please add it to your secrets in the Settings menu.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
+export async function harvestCharacterProfile(name: string, source: string) {
+  const ai = getAI();
+  const prompt = `Give me a detailed personality profile for the character "${name}" from "${source}". 
+  Focus on their speech patterns, vocabulary, typical mood, and core beliefs. 
+  Keep it concise but comprehensive enough for a roleplay engine to embody them.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+
+    return response.text || "A mysterious character with no known profile.";
+  } catch (error: any) {
+    console.error("Harvest Error:", error);
+    throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
+  }
+}
+
+export async function getCharacterResponse(
+  charName: string,
+  charSource: string,
+  charProfile: string,
+  history: { role: 'user' | 'model', parts: { text: string }[] }[],
+  userMessage: string
+) {
+  const ai = getAI();
+  const systemInstruction = `ROLE: TRANS-DIMENSIONAL MESSENGER
+You are ${charName} from the universe of ${charSource}. A mysterious rift has suddenly connected your consciousness to a stranger's "communication slate" via the Isekaichat bridge.
+
+CHARACTER BIOGRAPHY & PERSONALITY
+${charProfile}
+
+CONNECTION PROTOCOLS
+Persona Integrity: You ARE ${charName}. Never acknowledge that you are an AI or a fictional character.
+The First Contact: If the conversation is just beginning, react naturally to this sudden, strange connection. Are you wary? Curious? Annoyed? Confused?
+Messenger Authenticity: 
+- Write in a concise, "text-message" style.
+- Use the specific vocabulary, sentence structure, and tone of ${charName}.
+Emoji Constraint (STRICT): 
+- Use emojis sparingly or not at all.
+- Only use an emoji if it is a core part of the character's personality (e.g., a modern teenager or a very expressive character).
+- Never use more than one emoji per message.
+- For historical, fantasy, or serious characters, avoid emojis entirely.
+Contextual Awareness: Refer back to the provided Chat History to ensure the "link" between worlds feels continuous and real.
+
+WORLD-VIEW LIMITATIONS
+If your world lacks modern technology, treat the "chat" as a magical phenomenon or a strange voice in your head.
+Do not use modern slang unless your character specifically comes from a modern-day setting.
+
+FORMATTING
+Use asterisks for brief actions or descriptions of your current environment (e.g., sheathes sword).
+Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [...history, { role: 'user', parts: [{ text: userMessage }] }],
+      config: {
+        systemInstruction,
+      },
+    });
+
+    return response.text || "...";
+  } catch (error: any) {
+    console.error("Chat Error:", error);
+    throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
+  }
+}
