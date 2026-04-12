@@ -26,6 +26,21 @@ const AppLogo = ({ className }: { className?: string }) => (
   />
 );
 
+const capitalize = (str: string) => {
+  return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
+const formatTimestamp = (timestamp: any) => {
+  if (!timestamp) return '';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date.toLocaleString([], { 
+    month: 'short', 
+    day: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+};
+
 interface Character {
   id: string;
   name: string;
@@ -329,6 +344,37 @@ export default function App() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] opacity-[0.05]" />
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ 
+            scale: 1, 
+            opacity: 1,
+            y: [0, -10, 0]
+          }}
+          transition={{ 
+            scale: { type: "spring" },
+            y: { repeat: Infinity, duration: 2, ease: "easeInOut" }
+          }}
+          className="relative z-10 mb-8"
+        >
+          <AppLogo className="w-24 h-24 drop-shadow-[0_20px_20px_rgba(var(--primary-rgb),0.3)]" />
+        </motion.div>
+        <div className="space-y-4 text-center relative z-10">
+          <h2 className="text-2xl font-black tracking-tighter uppercase text-foreground">Stabilizing Rift</h2>
+          <div className="flex gap-1 justify-center">
+            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-primary rounded-full" />
+            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-primary rounded-full" />
+            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-primary rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 overflow-hidden relative">
@@ -374,11 +420,19 @@ export default function App() {
             <div className="space-y-6 flex flex-col items-center">
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.3, type: "spring" }}
+                animate={{ 
+                  scale: 1, 
+                  opacity: 1,
+                  y: [0, -15, 0]
+                }}
+                transition={{ 
+                  scale: { delay: 0.3, type: "spring" },
+                  opacity: { delay: 0.3 },
+                  y: { repeat: Infinity, duration: 3, ease: "easeInOut" }
+                }}
                 className="mb-[-1.5rem] relative z-20"
               >
-                <AppLogo className="w-20 h-20 drop-shadow-2xl" />
+                <AppLogo className="w-20 h-20 drop-shadow-[0_20px_20px_rgba(var(--primary-rgb),0.3)]" />
               </motion.div>
               <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-foreground leading-none relative z-10">
                 Isekai<span className="text-primary">Chat</span>
@@ -416,7 +470,7 @@ export default function App() {
                 ))}
               </div>
               <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground/40 uppercase">
-                Dimensional Link v1.0.0
+                Dimensional Link v1.0.1
               </p>
             </div>
           </div>
@@ -565,7 +619,7 @@ export default function App() {
                   <p className={`font-medium truncate ${selectedChar?.id === char.id ? 'text-primary' : 'text-foreground'}`}>
                     {char.name}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">{char.source}</p>
+                  <p className="text-xs text-muted-foreground truncate tracking-wider">{capitalize(char.source)}</p>
                 </div>
               </button>
             ))}
@@ -659,12 +713,17 @@ export default function App() {
                         {msg.sender === 'user' ? (user.displayName?.[0] || 'U') : selectedChar.name[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
-                      msg.sender === 'user' 
-                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                        : 'bg-card text-card-foreground border border-border rounded-tl-none'
-                    }`}>
-                      <p className="text-sm leading-relaxed">{msg.text}</p>
+                    <div className={`max-w-[75%] space-y-1 ${msg.sender === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                      <div className={`rounded-2xl px-4 py-3 shadow-sm ${
+                        msg.sender === 'user' 
+                          ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                          : 'bg-card text-card-foreground border border-border rounded-tl-none'
+                      }`}>
+                        <p className="text-sm leading-relaxed">{msg.text}</p>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground/60 font-medium px-1">
+                        {formatTimestamp(msg.timestamp)}
+                      </span>
                     </div>
                   </motion.div>
                 ))}
@@ -716,12 +775,21 @@ export default function App() {
                 The bridge is ready. Choose a character or establish a new dimensional link.
               </p>
             </div>
-            <Button 
-              onClick={() => setIsCreating(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl px-8 h-12 shadow-lg shadow-primary/20 relative z-10"
-            >
-              Establish New Link
-            </Button>
+            <div className="flex flex-col gap-3 relative z-10 w-full max-w-xs mx-auto">
+              <Button 
+                onClick={() => setIsCreating(true)}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl px-8 h-12 shadow-lg shadow-primary/20"
+              >
+                Establish New Link
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden border-border hover:bg-muted rounded-2xl px-8 h-12"
+              >
+                Select from Connections
+              </Button>
+            </div>
           </div>
         )}
       </main>
@@ -738,33 +806,33 @@ export default function App() {
             >
               <Card className="bg-card border-border text-foreground shadow-2xl">
                 <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-3xl">
+                  <CardTitle className="flex items-center gap-3 text-3xl font-black tracking-tighter uppercase">
                     <AppLogo className="w-8 h-8" />
                     Establish Link
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">
+                  <CardDescription className="text-muted-foreground text-base font-medium">
                     Enter the character's origin to tune the dimensional frequency.
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleCreateCharacter}>
                   <CardContent className="space-y-6 pb-10">
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] ml-1">Character Name</label>
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-1">Character Name</label>
                       <Input 
-                        placeholder="e.g. Harry Potter" 
+                        placeholder="e.g. Eren Jaeger" 
                         value={charName}
                         onChange={(e) => setCharName(e.target.value)}
-                        className="bg-muted/50 border-border h-14 rounded-2xl text-lg px-6"
+                        className="bg-muted/30 border-border/50 h-14 rounded-xl text-lg px-6 placeholder:opacity-30 font-bold"
                         required
                       />
                     </div>
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] ml-1">Source Universe</label>
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-1">Source Universe</label>
                       <Input 
-                        placeholder="e.g. Hogwarts" 
+                        placeholder="e.g. Attack on Titan" 
                         value={charSource}
                         onChange={(e) => setCharSource(e.target.value)}
-                        className="bg-muted/50 border-border h-14 rounded-2xl text-lg px-6"
+                        className="bg-muted/30 border-border/50 h-14 rounded-xl text-lg px-6 placeholder:opacity-30 font-bold"
                         required
                       />
                     </div>
@@ -774,14 +842,14 @@ export default function App() {
                       type="button" 
                       variant="ghost" 
                       onClick={() => setIsCreating(false)}
-                      className="flex-1 hover:bg-muted rounded-2xl h-14 text-lg font-semibold"
+                      className="flex-1 hover:bg-muted rounded-xl h-14 text-sm font-black uppercase tracking-widest"
                     >
                       Sever
                     </Button>
                     <Button 
                       type="submit" 
                       disabled={isHarvesting}
-                      className="flex-1 bg-primary hover:bg-primary/90 h-14 rounded-2xl text-lg font-bold shadow-xl shadow-primary/20"
+                      className="flex-1 bg-primary hover:bg-primary/90 h-14 rounded-xl text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20"
                     >
                       Connect
                     </Button>
@@ -805,23 +873,23 @@ export default function App() {
             >
               <Card className="bg-card border-border text-foreground shadow-2xl">
                 <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-3xl text-destructive">
+                  <CardTitle className="flex items-center gap-3 text-3xl text-destructive font-black tracking-tighter uppercase">
                     <RotateCcw className="w-8 h-8" />
                     Reset Link
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">
+                  <CardDescription className="text-muted-foreground text-base font-medium">
                     This will permanently erase all shared memories with {selectedChar?.name}.
                   </CardDescription>
                 </CardHeader>
                 <div className="px-6 pb-10 space-y-6">
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] ml-1">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-1">
                       Type "forget about me" to confirm
                     </label>
                     <Input 
                       value={resetConfirm}
                       onChange={(e) => setResetConfirm(e.target.value)}
-                      className="bg-muted/50 border-border h-14 rounded-2xl text-lg px-6"
+                      className="bg-muted/30 border-border/50 h-14 rounded-xl text-lg px-6 placeholder:opacity-30 font-bold"
                       placeholder="forget about me"
                     />
                   </div>
@@ -832,14 +900,14 @@ export default function App() {
                         setIsResetting(false);
                         setResetConfirm('');
                       }}
-                      className="flex-1 rounded-2xl h-14 text-lg font-semibold"
+                      className="flex-1 rounded-xl h-14 text-sm font-black uppercase tracking-widest"
                     >
                       Cancel
                     </Button>
                     <Button 
                       disabled={resetConfirm !== 'forget about me'}
                       onClick={handleResetConversation}
-                      className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-2xl h-14 text-lg font-bold shadow-xl shadow-destructive/20"
+                      className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-destructive/20"
                     >
                       Reset
                     </Button>
