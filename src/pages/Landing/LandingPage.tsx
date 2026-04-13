@@ -115,7 +115,7 @@ export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => 
             <div className="w-3 h-3 rounded-full bg-red-400" />
             <div className="w-3 h-3 rounded-full bg-amber-400" />
             <div className="w-3 h-3 rounded-full bg-emerald-400" />
-            <div className="flex-1 text-center text-[10px] font-bold text-muted-foreground tracking-widest">DIMENSIONAL_LINK_v1.0.3</div>
+            <div className="flex-1 text-center text-[10px] font-bold text-muted-foreground tracking-widest">DIMENSIONAL_LINK_v1.0.4</div>
           </div>
           
           <div className="flex-1 p-4 space-y-4 overflow-hidden flex flex-col justify-end">

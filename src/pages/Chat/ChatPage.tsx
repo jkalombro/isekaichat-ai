@@ -38,6 +38,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
   const [resetConfirm, setResetConfirm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -258,19 +259,37 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
         timestamp: serverTimestamp(),
       });
 
-      setIsTyping(true);
+      // Only show typing if we aren't currently "offline"
+      if (!isOffline) {
+        setIsTyping(true);
+      }
 
       const history = messages.map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.text }]
       }));
 
+      // Determine context
+      const lastCharMsg = [...messages].reverse().find(m => m.sender === 'character');
+      const lastUserMsgBeforeThis = [...messages].reverse().find(m => m.sender === 'user');
+      
+      const userDidNotAnswerQuestion = lastCharMsg?.text.includes('?') && 
+        (!lastUserMsgBeforeThis || !lastUserMsgBeforeThis.text.toLowerCase().includes('yes') && !lastUserMsgBeforeThis.text.toLowerCase().includes('no'));
+        // This is a very simple heuristic for "did not answer question"
+
+      const context = {
+        lastConversationTime: lastCharMsg?.timestamp?.toDate?.()?.toISOString() || lastCharMsg?.timestamp?.toString(),
+        wasOffline: isOffline,
+        userDidNotAnswerQuestion: userDidNotAnswerQuestion
+      };
+
       const aiResponse = await getCharacterResponse(
         selectedChar.name,
         selectedChar.source,
         selectedChar.profile,
         history,
-        userMsg
+        userMsg,
+        context
       );
 
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {
@@ -280,24 +299,11 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
         timestamp: serverTimestamp(),
       });
 
+      setIsOffline(false);
     } catch (error: any) {
       console.error("Gemini Error:", error);
-      const lastMsg = messages[messages.length - 1];
-      const errorResponse = "I'm not feeling well right now. Can we chat some other time?";
-      
-      if (!lastMsg || lastMsg.text !== errorResponse) {
-        try {
-          await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {
-            chatId: selectedChar.id,
-            sender: 'character',
-            text: errorResponse,
-            timestamp: serverTimestamp(),
-          });
-        } catch (dbError) {
-          console.error("Failed to save error message to DB:", dbError);
-        }
-      }
-      toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
+      setIsOffline(true);
+      // No toast or character reply on Gemini error as per request
     } finally {
       setIsTyping(false);
     }
@@ -331,6 +337,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
               selectedChar={selectedChar}
               user={user}
               isTyping={isTyping}
+              isOffline={isOffline}
               scrollRef={scrollRef}
             />
             <MessageInput 

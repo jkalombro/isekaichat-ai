@@ -11,6 +11,7 @@ interface MessageListProps {
   selectedChar: Character;
   user: any;
   isTyping: boolean;
+  isOffline: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
 }
 
@@ -19,6 +20,7 @@ export const MessageList = ({
   selectedChar,
   user,
   isTyping,
+  isOffline,
   scrollRef
 }: MessageListProps) => {
   return (
@@ -70,6 +72,18 @@ export const MessageList = ({
               <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
             </div>
           </div>
+        )}
+
+        {isOffline && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex justify-center py-2"
+          >
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-destructive/60 animate-pulse">
+              {selectedChar.name} went offline
+            </span>
+          </motion.div>
         )}
       </div>
     </ScrollArea>

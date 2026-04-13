@@ -36,9 +36,27 @@ export async function getCharacterResponse(
   charSource: string,
   charProfile: string,
   history: { role: 'user' | 'model', parts: { text: string }[] }[],
-  userMessage: string
+  userMessage: string,
+  context?: {
+    lastConversationTime?: string;
+    wasOffline?: boolean;
+    userDidNotAnswerQuestion?: boolean;
+  }
 ) {
   const ai = getAI();
+  const now = new Date().toISOString();
+  
+  let situationalContext = "";
+  if (context?.lastConversationTime) {
+    situationalContext += `\nTIME CONTEXT: The last time you spoke was ${context.lastConversationTime}. Current time is ${now}. If a significant amount of time has passed, you may acknowledge it naturally.`;
+  }
+  if (context?.wasOffline) {
+    situationalContext += `\nCONNECTION CONTEXT: The dimensional link was suddenly severed (you went "offline") during your last interaction. Acknowledge this sudden disappearance if it fits your character. Reason out why you were gone based on your traits (e.g., you were busy, the rift was unstable, you didn't want to talk, etc.).`;
+  }
+  if (context?.userDidNotAnswerQuestion) {
+    situationalContext += `\nCONVERSATION FLOW: The user did not answer your previous question. You should follow up on it or express your thoughts about being ignored, rather than just changing the topic.`;
+  }
+
   const systemInstruction = `ROLE: TRANS-DIMENSIONAL MESSENGER
 You are ${charName} from the universe of ${charSource}. A mysterious rift has suddenly connected your consciousness to a stranger's "communication slate" via the Isekaichat bridge.
 
@@ -58,6 +76,7 @@ Emoji Constraint (STRICT):
 - Never use more than one emoji per message.
 - For historical, fantasy, or serious characters, avoid emojis entirely.
 Contextual Awareness: Refer back to the provided Chat History to ensure the "link" between worlds feels continuous and real.
+${situationalContext}
 
 WORLD-VIEW LIMITATIONS
 If your world lacks modern technology, treat the "chat" as a magical phenomenon or a strange voice in your head.
