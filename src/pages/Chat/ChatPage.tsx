@@ -217,21 +217,27 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
         profile = await harvestCharacterProfile(charName, charSource);
       }
 
-      const newDoc = await addDoc(collection(db, 'characters'), {
+      const characterData: any = {
         name: charName,
         source: charSource,
         profile: profile,
-        avatarUrl: existingAvatar || null,
         ownerId: user.uid,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      if (existingAvatar) {
+        characterData.avatarUrl = existingAvatar;
+      }
+
+      const newDoc = await addDoc(collection(db, 'characters'), characterData);
 
       setCharName('');
       setCharSource('');
       setIsCreating(false);
       toast.success(`Connection established with ${charName}!`);
     } catch (error: any) {
-      toast.error(error.message || "Failed to establish connection.");
+      console.error("Link Error:", error);
+      toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
     } finally {
       setIsHarvesting(false);
     }
@@ -291,7 +297,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
           console.error("Failed to save error message to DB:", dbError);
         }
       }
-      toast.error("The dimensional link is flickering. The character seems unwell.");
+      toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
     } finally {
       setIsTyping(false);
     }

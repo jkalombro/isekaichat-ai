@@ -61,7 +61,7 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.source is string && data.source.size() > 0 && data.source.size() < 100 &&
              data.profile is string && data.profile.size() > 0 && data.profile.size() < 5000 &&
-             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() < 1000));
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() < 1000));
     }
 
     function isValidMessage(data) {

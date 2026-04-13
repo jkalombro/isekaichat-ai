@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
   const apiKey = process.env.GEMINI_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+  if (!apiKey || apiKey === "GEMINI_KEY") {
     throw new Error("Gemini API key is not configured. Please add it to your secrets in the Settings menu.");
   }
   return new GoogleGenAI({ apiKey });
