@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { MessageCircle } from 'lucide-react';
+import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile, getCharacterResponse } from '@/shared/services/gemini';
 import { Character, Message } from '@/shared/types';
 import { Button } from '@/shared/components/ui/button';
+import { AppLogo } from '@/shared/components/AppLogo';
 import { Sidebar } from './components/Sidebar';
 import { ChatHeader } from './components/ChatHeader';
 import { MessageList } from './components/MessageList';
@@ -18,9 +20,10 @@ interface ChatPageProps {
   user: any;
   isAuthReady: boolean;
   onLogout: () => void;
+  onShowDisclaimer: () => void;
 }
 
-export const ChatPage = ({ user, isAuthReady, onLogout }: ChatPageProps) => {
+export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: ChatPageProps) => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -305,6 +308,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout }: ChatPageProps) => {
         setIsCreating={setIsCreating}
         user={user}
         onLogout={onLogout}
+        onShowDisclaimer={onShowDisclaimer}
       />
 
       <main className="flex-1 flex flex-col relative bg-background overflow-hidden">
@@ -332,32 +336,111 @@ export const ChatPage = ({ user, isAuthReady, onLogout }: ChatPageProps) => {
             />
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 relative">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] opacity-[0.03]" />
-            <div className="w-24 h-24 bg-muted rounded-[2.5rem] flex items-center justify-center border border-border relative z-10">
-              <MessageCircle className="w-10 h-10 text-muted-foreground" />
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8 relative overflow-hidden">
+            {/* Portal Background Animation */}
+            <div className="absolute inset-0 z-0">
+              <motion.div 
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 360],
+                  opacity: [0.05, 0.1, 0.05]
+                }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,var(--color-primary),transparent)]"
+              />
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-[100px]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] opacity-[0.1]" />
             </div>
-            <div className="space-y-2 relative z-10">
-              <h3 className="text-3xl font-bold tracking-tight">Select a Connection</h3>
-              <p className="text-muted-foreground max-w-xs mx-auto">
-                The bridge is ready. Choose a character or establish a new dimensional link.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 relative z-10 w-full max-w-xs mx-auto">
-              <Button 
-                onClick={() => setIsCreating(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl px-8 h-12 shadow-lg shadow-primary/20"
-              >
-                Establish New Link
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden border-border hover:bg-muted rounded-2xl px-8 h-12"
-              >
-                Select from Connections
-              </Button>
-            </div>
+
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative z-10"
+            >
+              <div className="relative group">
+                <motion.div 
+                  animate={{ 
+                    rotate: 360,
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{ 
+                    rotate: { duration: 10, repeat: Infinity, ease: "linear" },
+                    scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+                  }}
+                  className="absolute inset-[-20px] rounded-full border-2 border-dashed border-primary/30"
+                />
+                <div className="w-32 h-32 bg-card rounded-full flex items-center justify-center border-4 border-primary/20 shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)] relative overflow-hidden">
+                  <motion.div
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <AppLogo className="w-16 h-16 drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" />
+                  </motion.div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-4 relative z-10"
+            >
+              <div className="space-y-2">
+                <h3 className="text-4xl font-black tracking-tighter uppercase text-foreground">
+                  Bridge <span className="text-primary">Stabilized</span>
+                </h3>
+                <p className="text-muted-foreground max-w-sm mx-auto text-lg font-medium leading-tight">
+                  The dimensional rift is open. Choose a consciousness to link with or establish a new connection.
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+                <Button 
+                  size="lg"
+                  onClick={() => setIsCreating(true)}
+                  className="h-12 px-8 rounded-2xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/20 group"
+                >
+                  Establish New Link
+                  <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="ml-2">
+                    +
+                  </motion.span>
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="h-12 px-8 rounded-2xl font-bold border-primary/20 hover:bg-primary/5 md:hidden"
+                >
+                  View Connections
+                </Button>
+              </div>
+            </motion.div>
+
+            {/* Decorative Particles */}
+            {[...Array(6)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ 
+                  y: [-20, 20, -20],
+                  x: [-10, 10, -10],
+                  opacity: [0.2, 0.5, 0.2],
+                  scale: [1, 1.2, 1]
+                }}
+                transition={{ 
+                  duration: 3 + i, 
+                  repeat: Infinity, 
+                  ease: "easeInOut",
+                  delay: i * 0.5
+                }}
+                className="absolute w-1 h-1 bg-primary rounded-full blur-[1px]"
+                style={{
+                  top: `${20 + Math.random() * 60}%`,
+                  left: `${20 + Math.random() * 60}%`,
+                }}
+              />
+            ))}
           </div>
         )}
       </main>

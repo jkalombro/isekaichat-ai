@@ -17,6 +17,7 @@ interface SidebarProps {
   setIsCreating: (creating: boolean) => void;
   user: any;
   onLogout: () => void;
+  onShowDisclaimer: () => void;
 }
 
 export const Sidebar = ({
@@ -27,7 +28,8 @@ export const Sidebar = ({
   setIsSidebarOpen,
   setIsCreating,
   user,
-  onLogout
+  onLogout,
+  onShowDisclaimer
 }: SidebarProps) => {
   return (
     <>
@@ -116,7 +118,7 @@ export const Sidebar = ({
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-4">
           <div className="flex items-center gap-3 p-2 rounded-2xl bg-muted/30 border border-border/50">
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.photoURL || ''} />
@@ -129,6 +131,12 @@ export const Sidebar = ({
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
+          <button 
+            onClick={onShowDisclaimer}
+            className="w-full text-[10px] font-bold tracking-[0.2em] text-muted-foreground/40 hover:text-primary/60 transition-colors uppercase text-center"
+          >
+            Disclaimer & Policy
+          </button>
         </div>
       </aside>
     </>

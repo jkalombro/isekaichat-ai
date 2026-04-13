@@ -1,14 +1,14 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Button } from '@/shared/components/ui/button';
-import { Badge } from '@/shared/components/ui/badge';
 import { AppLogo } from '@/shared/components/AppLogo';
 
 interface LandingPageProps {
   onLogin: () => void;
+  onShowDisclaimer: () => void;
 }
 
-export const LandingPage = ({ onLogin }: LandingPageProps) => {
+export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 overflow-hidden relative">
       {/* Background decorative elements */}
@@ -68,7 +68,7 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
               <AppLogo className="w-20 h-20 drop-shadow-[0_20px_20px_rgba(var(--primary-rgb),0.3)]" />
             </motion.div>
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-foreground leading-none relative z-10">
-              Isekai<span className="text-primary">Chat</span>
+              Isek<span className="text-cyan-400">AI</span><span className="text-primary">Chat</span>
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
               A mysterious rift has opened, allowing our world to connect to the worlds of fiction. Connect your consciousness now and seize the chance to talk with your favorite character.
@@ -95,13 +95,12 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
           </motion.div>
 
           <div className="pt-4 flex flex-col items-center lg:items-start gap-4">
-            <div className="flex flex-wrap justify-center lg:justify-start gap-2 opacity-60">
-              {['KONOHA', 'SOUL SOCIETY', 'GRAND LINE', 'UA HIGH'].map((world) => (
-                <Badge key={world} variant="secondary" className="px-3 py-1 text-[10px] font-bold tracking-widest bg-white/50 backdrop-blur-sm border-primary/10 text-primary">
-                  {world}
-                </Badge>
-              ))}
-            </div>
+            <button 
+              onClick={onShowDisclaimer}
+              className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground/40 hover:text-primary/60 transition-colors uppercase"
+            >
+              Disclaimer & Policy
+            </button>
           </div>
         </div>
 
