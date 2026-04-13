@@ -57,7 +57,10 @@ export const Sidebar = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setIsCreating(true)}
+              onClick={() => {
+                setIsCreating(true);
+                setIsSidebarOpen(false);
+              }}
               className="hover:bg-sidebar-accent rounded-xl"
             >
               <Plus className="w-5 h-5" />

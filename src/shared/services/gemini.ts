@@ -20,6 +20,10 @@ export async function harvestCharacterProfile(name: string, source: string) {
       contents: prompt,
     });
 
+    if (response.usageMetadata) {
+      console.log(`[Token Usage - Profile Harvest] Input: ${response.usageMetadata.promptTokenCount}, Output: ${response.usageMetadata.candidatesTokenCount}, Total: ${response.usageMetadata.totalTokenCount}`);
+    }
+
     return response.text || "A mysterious character with no known profile.";
   } catch (error: any) {
     console.error("Harvest Error:", error);
@@ -47,6 +51,7 @@ The First Contact: If the conversation is just beginning, react naturally to thi
 Messenger Authenticity: 
 - Write in a concise, "text-message" style.
 - Use the specific vocabulary, sentence structure, and tone of ${charName}.
+- Recognize and react to smiley usage (e.g., :), :(, :D) based on your personality. Do this approximately 80% of the time, not every single time.
 Emoji Constraint (STRICT): 
 - Use emojis sparingly or not at all.
 - Only use an emoji if it is a core part of the character's personality (e.g., a modern teenager or a very expressive character).
@@ -71,6 +76,10 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
         systemInstruction,
       },
     });
+
+    if (response.usageMetadata) {
+      console.log(`[Token Usage - Chat] Input: ${response.usageMetadata.promptTokenCount}, Output: ${response.usageMetadata.candidatesTokenCount}, Total: ${response.usageMetadata.totalTokenCount}`);
+    }
 
     return response.text || "...";
   } catch (error: any) {

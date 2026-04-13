@@ -173,29 +173,56 @@ export const ChatPage = ({ user, isAuthReady, onLogout }: ChatPageProps) => {
 
     setIsHarvesting(true);
     try {
-      const existingQuery = query(
+      // 1. Check if the CURRENT user already has this character
+      const userExistingQuery = query(
+        collection(db, 'characters'),
+        where('ownerId', '==', user.uid),
+        where('name', '==', charName),
+        where('source', '==', charSource),
+        limit(1)
+      );
+      const userExistingSnapshot = await getDocs(userExistingQuery);
+
+      if (!userExistingSnapshot.empty) {
+        const existingChar = { id: userExistingSnapshot.docs[0].id, ...userExistingSnapshot.docs[0].data() } as Character;
+        setSelectedChar(existingChar);
+        setCharName('');
+        setCharSource('');
+        setIsCreating(false);
+        toast.info(`You already have a link with ${charName}.`);
+        return;
+      }
+
+      // 2. Check if ANY user has this character to reuse profile and avatar
+      const globalExistingQuery = query(
         collection(db, 'characters'),
         where('name', '==', charName),
         where('source', '==', charSource),
         limit(1)
       );
-      const existingSnapshot = await getDocs(existingQuery);
+      const globalExistingSnapshot = await getDocs(globalExistingQuery);
       
       let profile: string;
-      if (!existingSnapshot.empty) {
-        profile = existingSnapshot.docs[0].data().profile;
-        toast.info("Existing dimensional frequency found. Connecting...");
+      let existingAvatar: string | undefined;
+
+      if (!globalExistingSnapshot.empty) {
+        const data = globalExistingSnapshot.docs[0].data();
+        profile = data.profile;
+        existingAvatar = data.avatarUrl;
+        toast.info("Existing dimensional frequency found. Syncing data...");
       } else {
         profile = await harvestCharacterProfile(charName, charSource);
       }
 
-      await addDoc(collection(db, 'characters'), {
+      const newDoc = await addDoc(collection(db, 'characters'), {
         name: charName,
         source: charSource,
         profile: profile,
+        avatarUrl: existingAvatar || null,
         ownerId: user.uid,
         createdAt: serverTimestamp(),
       });
+
       setCharName('');
       setCharSource('');
       setIsCreating(false);

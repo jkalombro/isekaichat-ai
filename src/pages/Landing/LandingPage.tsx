@@ -102,9 +102,6 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
                 </Badge>
               ))}
             </div>
-            <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground/40 uppercase">
-              Dimensional Link v1.0.1
-            </p>
           </div>
         </div>
 
@@ -119,7 +116,7 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
             <div className="w-3 h-3 rounded-full bg-red-400" />
             <div className="w-3 h-3 rounded-full bg-amber-400" />
             <div className="w-3 h-3 rounded-full bg-emerald-400" />
-            <div className="flex-1 text-center text-[10px] font-bold text-muted-foreground tracking-widest">DIMENSIONAL_LINK_v2.0</div>
+            <div className="flex-1 text-center text-[10px] font-bold text-muted-foreground tracking-widest">DIMENSIONAL_LINK_v1.0.2</div>
           </div>
           
           <div className="flex-1 p-4 space-y-4 overflow-hidden flex flex-col justify-end">
