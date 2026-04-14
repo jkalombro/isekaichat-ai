@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, X, MessageCircle, LogOut, User as UserIcon } from 'lucide-react';
+import { Home, X, MessageCircle, LogOut, User as UserIcon } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -11,7 +11,7 @@ import { capitalize } from '@/shared/utils';
 interface SidebarProps {
   characters: Character[];
   selectedChar: Character | null;
-  onSelectChar: (char: Character) => void;
+  onSelectChar: (char: Character | null) => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   setIsCreating: (creating: boolean) => void;
@@ -60,12 +60,12 @@ export const Sidebar = ({
               variant="ghost" 
               size="icon" 
               onClick={() => {
-                setIsCreating(true);
+                onSelectChar(null);
                 setIsSidebarOpen(false);
               }}
               className="hover:bg-sidebar-accent rounded-xl"
             >
-              <Plus className="w-5 h-5" />
+              <Home className="w-5 h-5" />
             </Button>
             <Button 
               variant="ghost" 

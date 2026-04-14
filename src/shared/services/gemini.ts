@@ -1,9 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
-  const apiKey = process.env.GEMINI_KEY;
-  if (!apiKey || apiKey === "GEMINI_KEY") {
-    throw new Error("Gemini API key is not configured. Please add it to your secrets in the Settings menu.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "GEMINI_API_KEY") {
+    throw new Error("Gemini API key is not configured. Please ensure GEMINI_API_KEY is set in your environment.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -104,5 +104,24 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
   } catch (error: any) {
     console.error("Chat Error:", error);
     throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
+  }
+}
+
+export async function testGeminiConnection() {
+  const ai = getAI();
+  try {
+    await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: "ping",
+    });
+    return "stable";
+  } catch (error: any) {
+    console.error("Gemini Connection Test Error:", error);
+    // SDK errors usually have a status or message
+    const status = error.status || (error.message?.includes("503") ? 503 : null);
+    if (status === 503) {
+      return "unstable";
+    }
+    return "closed";
   }
 }
