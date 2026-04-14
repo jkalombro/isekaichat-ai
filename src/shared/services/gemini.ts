@@ -14,7 +14,9 @@ export async function harvestCharacterProfile(name: string, source: string) {
   const ai = getAI();
   const prompt = `Give me a detailed personality profile for the character "${name}" from "${source}". 
   Focus on their speech patterns, vocabulary, typical mood, and core beliefs. 
-  Keep it concise but comprehensive enough for a roleplay engine to embody them.`;
+  Keep it concise but comprehensive enough for a roleplay engine to embody them.
+  
+  IMPORTANT: If you cannot find any information about this character or if they do not exist in the specified source, strictly return only the text "CHARACTER_NOT_FOUND".`;
 
   try {
     const response = await ai.models.generateContent({
@@ -22,15 +24,17 @@ export async function harvestCharacterProfile(name: string, source: string) {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
-    if (response.usageMetadata) {
-      console.log(`[Token Usage - Profile Harvest] Input: ${response.usageMetadata.promptTokenCount}, Output: ${response.usageMetadata.candidatesTokenCount}, Total: ${response.usageMetadata.totalTokenCount}`);
+    const text = response.text?.trim() || "";
+    if (text === "CHARACTER_NOT_FOUND") {
+      throw new Error("CHARACTER_NOT_FOUND");
     }
 
     return {
-      text: response.text || "A mysterious character with no known profile.",
+      text: text || "A mysterious character with no known profile.",
       tokensConsumed: response.usageMetadata?.totalTokenCount || 0
     };
   } catch (error: any) {
+    if (error.message === "CHARACTER_NOT_FOUND") throw error;
     console.error("Harvest Error:", error);
     throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
   }

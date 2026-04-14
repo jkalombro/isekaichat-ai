@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, X, MessageCircle, LogOut, User as UserIcon } from 'lucide-react';
+import { Home, X, MessageCircle, LogOut, User as UserIcon, BarChart3 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -18,6 +18,7 @@ interface SidebarProps {
   user: any;
   onLogout: () => void;
   onShowDisclaimer: () => void;
+  onShowAnalytics: () => void;
 }
 
 export const Sidebar = ({
@@ -29,7 +30,8 @@ export const Sidebar = ({
   setIsCreating,
   user,
   onLogout,
-  onShowDisclaimer
+  onShowDisclaimer,
+  onShowAnalytics
 }: SidebarProps) => {
   return (
     <>
@@ -127,9 +129,14 @@ export const Sidebar = ({
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-medium truncate">{user.displayName}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={onLogout} className="text-muted-foreground hover:text-destructive rounded-lg">
-              <LogOut className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={onShowAnalytics} className="text-muted-foreground hover:text-primary rounded-lg">
+                <BarChart3 className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onLogout} className="text-muted-foreground hover:text-destructive rounded-lg">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <button 
             onClick={onShowDisclaimer}

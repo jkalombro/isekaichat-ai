@@ -66,8 +66,24 @@ export const ChatHome = ({
             } relative overflow-hidden group active:scale-95 disabled:cursor-not-allowed`}
           >
             <motion.div
-              animate={isTestingConnection ? { scale: [1, 1.2, 1] } : { y: [0, -5, 0] }}
-              transition={{ duration: isTestingConnection ? 0.5 : 2, repeat: Infinity, ease: "easeInOut" }}
+              animate={isTestingConnection ? { 
+                rotate: [0, 360, 1440, 1800],
+                scale: [1, 1.1, 1]
+              } : { 
+                y: [0, -5, 0],
+                rotate: 0,
+                scale: 1
+              }}
+              transition={{ 
+                rotate: isTestingConnection ? { 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  ease: "linear",
+                  times: [0, 0.3, 0.7, 1]
+                } : { duration: 0.8, ease: "easeOut" },
+                scale: isTestingConnection ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 },
+                y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+              }}
             >
               <AppLogo className={`w-16 h-16 transition-all duration-500 ${
                 geminiStatus === 'stable' ? 'drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 

@@ -23,9 +23,10 @@ interface ChatPageProps {
   isAuthReady: boolean;
   onLogout: () => void;
   onShowDisclaimer: () => void;
+  onShowAnalytics: () => void;
 }
 
-export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: ChatPageProps) => {
+export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShowAnalytics }: ChatPageProps) => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -81,9 +82,9 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
     }
   };
 
-  const handleSelectChar = async (char: Character | null) => {
+  const handleSelectChar = (char: Character | null) => {
     if (prevSelectedCharRef.current) {
-      await calculateTokensForCharacter(prevSelectedCharRef.current);
+      calculateTokensForCharacter(prevSelectedCharRef.current);
     }
     setSelectedChar(char);
     prevSelectedCharRef.current = char;
@@ -292,7 +293,11 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
       toast.success(`Connection established with ${characterData.name}!`);
     } catch (error: any) {
       console.error("Link Error:", error);
-      toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
+      if (error.message === "CHARACTER_NOT_FOUND") {
+        toast.error(`Dimensional Rift Error: Could not find ${charName} in ${charSource}. Please verify the character exists.`);
+      } else {
+        toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
+      }
     } finally {
       setIsHarvesting(false);
     }
@@ -377,6 +382,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
         user={user}
         onLogout={onLogout}
         onShowDisclaimer={onShowDisclaimer}
+        onShowAnalytics={onShowAnalytics}
       />
 
       <main className="flex-1 flex flex-col relative bg-background overflow-hidden">
