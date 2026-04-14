@@ -8,17 +8,19 @@ interface ProcessingOverlayProps {
   isResettingMemories: boolean;
   isUploading: boolean;
   isLoggingIn: boolean;
+  isSeveringLink?: boolean;
 }
 
 export const ProcessingOverlay = ({
   isHarvesting,
   isResettingMemories,
   isUploading,
-  isLoggingIn
+  isLoggingIn,
+  isSeveringLink = false
 }: ProcessingOverlayProps) => {
   return (
     <AnimatePresence>
-      {(isHarvesting || isResettingMemories || isUploading || isLoggingIn) && (
+      {(isHarvesting || isResettingMemories || isUploading || isLoggingIn || isSeveringLink) && (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -37,6 +39,7 @@ export const ProcessingOverlay = ({
                   {isHarvesting ? "Tuning Frequency..." : 
                    isResettingMemories ? "Wiping Memories..." : 
                    isLoggingIn ? "Authenticating Consciousness..." :
+                   isSeveringLink ? "Severing Connection..." :
                    "Updating Appearance..."}
                 </h3>
                 <p className="text-muted-foreground font-medium">Please wait while the rift stabilizes.</p>

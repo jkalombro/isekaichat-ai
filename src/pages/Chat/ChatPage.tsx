@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Link2Off } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection } from '@/shared/services/gemini';
@@ -15,6 +15,7 @@ import { MessageList } from './components/MessageList';
 import { MessageInput } from './components/MessageInput';
 import { CreateModal } from './components/CreateModal';
 import { ResetModal } from './components/ResetModal';
+import { DeleteModal } from './components/DeleteModal';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { ChatHome } from './components/ChatHome';
 
@@ -38,7 +39,10 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
   const [isTyping, setIsTyping] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isResettingMemories, setIsResettingMemories] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSeveringLink, setIsSeveringLink] = useState(false);
   const [resetConfirm, setResetConfirm] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -178,6 +182,34 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
     }
   };
 
+  const handleDeleteConnection = async () => {
+    if (deleteConfirm !== 'sever connection' || !selectedChar || !user) return;
+
+    setIsSeveringLink(true);
+    try {
+      // 1. Delete all messages first
+      const q = query(collection(db, 'characters', selectedChar.id, 'messages'));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      // 2. Delete the character document
+      await deleteDoc(doc(db, 'characters', selectedChar.id));
+      
+      setDeleteConfirm('');
+      setIsDeleting(false);
+      setSelectedChar(null);
+      toast.success("Dimensional link severed.");
+    } catch (error: any) {
+      toast.error("Failed to sever connection.");
+    } finally {
+      setIsSeveringLink(false);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -209,17 +241,8 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
       const data = await response.json();
       
       if (data.secure_url) {
-        const q = query(
-          collection(db, 'characters'),
-          where('name', '==', selectedChar.name),
-          where('source', '==', selectedChar.source)
-        );
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-        snapshot.docs.forEach((charDoc) => {
-          batch.update(charDoc.ref, { avatarUrl: data.secure_url });
-        });
-        await batch.commit();
+        const charRef = doc(db, 'characters', selectedChar.id);
+        await updateDoc(charRef, { avatarUrl: data.secure_url });
         
         setSelectedChar(prev => prev ? { ...prev, avatarUrl: data.secure_url } : null);
         toast.success("Character appearance updated across dimensions.");
@@ -392,6 +415,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
               selectedChar={selectedChar}
               setIsSidebarOpen={setIsSidebarOpen}
               setIsResetting={setIsResetting}
+              setIsDeleting={setIsDeleting}
               handleFileChange={handleFileChange}
             />
             <MessageList 
@@ -441,11 +465,21 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
         handleResetConversation={handleResetConversation}
       />
 
+      <DeleteModal 
+        isDeleting={isDeleting}
+        setIsDeleting={setIsDeleting}
+        selectedChar={selectedChar}
+        deleteConfirm={deleteConfirm}
+        setDeleteConfirm={setDeleteConfirm}
+        handleDeleteConnection={handleDeleteConnection}
+      />
+
       <ProcessingOverlay 
         isHarvesting={isHarvesting}
         isResettingMemories={isResettingMemories}
         isUploading={isUploading}
         isLoggingIn={false}
+        isSeveringLink={isSeveringLink}
       />
     </div>
   );

@@ -27,8 +27,9 @@ export const isSmartMatch = (name1: string, source1: string, name2: string, sour
   const s2 = source2.toLowerCase().trim();
 
   // A match happens if sources are very similar AND names are very similar
-  const sourceMatch = s1 === s2 || (s1.length > 3 && s2.length > 3 && (s1.includes(s2) || s2.includes(s1)));
-  const nameMatch = n1 === n2 || (n1.length > 2 && n2.length > 2 && (n1.includes(n2) || n2.includes(n1)));
+  // We use a lower threshold for length to allow shorter matches like "Orb"
+  const sourceMatch = s1 === s2 || (s1.length >= 3 && s2.length >= 3 && (s1.includes(s2) || s2.includes(s1)));
+  const nameMatch = n1 === n2 || (n1.length >= 2 && n2.length >= 2 && (n1.includes(n2) || n2.includes(n1)));
 
   return sourceMatch && nameMatch;
 };

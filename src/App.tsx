@@ -11,6 +11,8 @@ import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { ProcessingOverlay } from '@/pages/Chat/components/ProcessingOverlay';
 
+import { APP_VERSION } from '@/shared/constants';
+
 const Splash = () => (
   <div className="h-screen w-full flex flex-col items-center justify-center bg-background relative overflow-hidden">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] opacity-[0.05]" />
@@ -30,7 +32,8 @@ const Splash = () => (
       <AppLogo className="w-24 h-24 drop-shadow-[0_20px_20px_rgba(var(--primary-rgb),0.3)]" />
     </motion.div>
     <div className="space-y-4 text-center relative z-10">
-      <h2 className="text-2xl font-black tracking-tighter uppercase text-foreground">Stabilizing Rift</h2>
+      <h2 className="text-2xl font-black tracking-tighter uppercase text-foreground mb-0">Stabilizing Rift</h2>
+      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] pt-0">DIMENSIONAL_LINK_{APP_VERSION}</p>
       <div className="flex gap-1 justify-center">
         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-primary rounded-full" />
         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-primary rounded-full" />

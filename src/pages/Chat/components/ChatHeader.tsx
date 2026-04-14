@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Camera, RotateCcw } from 'lucide-react';
+import { Menu, Camera, RotateCcw, Link2Off } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Character } from '@/shared/types';
@@ -8,6 +8,7 @@ interface ChatHeaderProps {
   selectedChar: Character;
   setIsSidebarOpen: (open: boolean) => void;
   setIsResetting: (resetting: boolean) => void;
+  setIsDeleting: (deleting: boolean) => void;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -15,6 +16,7 @@ export const ChatHeader = ({
   selectedChar,
   setIsSidebarOpen,
   setIsResetting,
+  setIsDeleting,
   handleFileChange
 }: ChatHeaderProps) => {
   return (
@@ -44,14 +46,26 @@ export const ChatHeader = ({
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{selectedChar.source}</p>
         </div>
       </div>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        onClick={() => setIsResetting(true)}
-        className="text-muted-foreground hover:text-destructive rounded-xl"
-      >
-        <RotateCcw className="w-4 h-4" />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setIsResetting(true)}
+          className="text-muted-foreground hover:text-destructive rounded-xl"
+          title="Reset conversation"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setIsDeleting(true)}
+          className="text-muted-foreground hover:text-destructive rounded-xl"
+          title="Sever connection"
+        >
+          <Link2Off className="w-4 h-4" />
+        </Button>
+      </div>
     </header>
   );
 };
