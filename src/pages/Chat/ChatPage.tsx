@@ -94,6 +94,27 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
     prevSelectedCharRef.current = char;
   };
 
+  const handleLogoutWithCalc = () => {
+    if (selectedChar) {
+      calculateTokensForCharacter(selectedChar);
+    }
+    onLogout();
+  };
+
+  const handleShowAnalyticsWithCalc = () => {
+    if (selectedChar) {
+      calculateTokensForCharacter(selectedChar);
+    }
+    onShowAnalytics();
+  };
+
+  const handleShowDisclaimerWithCalc = () => {
+    if (selectedChar) {
+      calculateTokensForCharacter(selectedChar);
+    }
+    onShowDisclaimer();
+  };
+
   const checkConnection = async () => {
     if (isTestingConnection) return;
     setIsTestingConnection(true);
@@ -403,9 +424,9 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
         setIsSidebarOpen={setIsSidebarOpen}
         setIsCreating={setIsCreating}
         user={user}
-        onLogout={onLogout}
-        onShowDisclaimer={onShowDisclaimer}
-        onShowAnalytics={onShowAnalytics}
+        onLogout={handleLogoutWithCalc}
+        onShowDisclaimer={handleShowDisclaimerWithCalc}
+        onShowAnalytics={handleShowAnalyticsWithCalc}
       />
 
       <main className="flex-1 flex flex-col relative bg-background overflow-hidden">
