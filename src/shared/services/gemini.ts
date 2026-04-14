@@ -8,6 +8,8 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+const geminiModel = "gemini-3-flash-preview";
+
 export async function harvestCharacterProfile(name: string, source: string) {
   const ai = getAI();
   const prompt = `Give me a detailed personality profile for the character "${name}" from "${source}". 
@@ -16,7 +18,7 @@ export async function harvestCharacterProfile(name: string, source: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: geminiModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
@@ -92,7 +94,7 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-latest",
+      model: geminiModel,
       contents: [...history, { role: 'user', parts: [{ text: userMessage }] }],
       config: {
         systemInstruction,
