@@ -21,6 +21,9 @@ service cloud.firestore {
     //   - name: string (required)
     //   - source: string (required)
     //   - profile: string (required)
+    //   - avatarUrl: string (optional)
+    //   - totalTokensConsumed: number (optional)
+    //   - lastCalculationDatetime: timestamp (optional)
     //   - createdAt: timestamp
     //
     // Collection: characters/{characterId}/messages
@@ -29,6 +32,7 @@ service cloud.firestore {
     //   - chatId: string (required)
     //   - sender: string (required, 'user' or 'character')
     //   - text: string (required)
+    //   - tokensConsumed: number (optional)
     //   - timestamp: timestamp
     //
     // ===============================================================
@@ -61,13 +65,16 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.source is string && data.source.size() > 0 && data.source.size() < 100 &&
              data.profile is string && data.profile.size() > 0 && data.profile.size() < 5000 &&
-             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() < 1000));
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() < 1000)) &&
+             (!('totalTokensConsumed' in data) || data.totalTokensConsumed is number) &&
+             (!('lastCalculationDatetime' in data) || data.lastCalculationDatetime is timestamp);
     }
 
     function isValidMessage(data) {
       return data.keys().hasAll(['chatId', 'sender', 'text', 'timestamp']) &&
              data.sender in ['user', 'character'] &&
-             data.text is string && data.text.size() > 0 && data.text.size() < 5000;
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             (!('tokensConsumed' in data) || data.tokensConsumed is number);
     }
 
     function isAdmin() {
@@ -91,7 +98,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidCharacter(request.resource.data);
       allow update: if (isCharOwner(resource.data) || isAdmin() || 
-                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl']))) && 
+                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'totalTokensConsumed', 'lastCalculationDatetime']))) && 
                     isValidCharacter(request.resource.data) &&
                     request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if isCharOwner(resource.data) || isAdmin();

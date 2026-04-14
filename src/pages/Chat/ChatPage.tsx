@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { MessageCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection } from '@/shared/services/gemini';
 import { Character, Message } from '@/shared/types';
+import { isSmartMatch } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { Sidebar } from './components/Sidebar';
@@ -42,8 +43,51 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
   const [isOffline, setIsOffline] = useState(false);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const prevSelectedCharRef = useRef<Character | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const calculateTokensForCharacter = async (character: Character) => {
+    if (!user) return;
+    
+    try {
+      const lastCalc = character.lastCalculationDatetime;
+      let q;
+      if (lastCalc) {
+        q = query(
+          collection(db, 'characters', character.id, 'messages'),
+          where('timestamp', '>', lastCalc)
+        );
+      } else {
+        q = query(collection(db, 'characters', character.id, 'messages'));
+      }
+
+      const snapshot = await getDocs(q);
+      let newTokens = 0;
+      snapshot.docs.forEach(doc => {
+        const data = doc.data() as Message;
+        newTokens += (data.tokensConsumed || 0);
+      });
+
+      if (newTokens > 0 || !lastCalc) {
+        const charRef = doc(db, 'characters', character.id);
+        await updateDoc(charRef, {
+          totalTokensConsumed: (character.totalTokensConsumed || 0) + newTokens,
+          lastCalculationDatetime: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.error("Token Calculation Error:", error);
+    }
+  };
+
+  const handleSelectChar = async (char: Character | null) => {
+    if (prevSelectedCharRef.current) {
+      await calculateTokensForCharacter(prevSelectedCharRef.current);
+    }
+    setSelectedChar(char);
+    prevSelectedCharRef.current = char;
+  };
 
   const checkConnection = async () => {
     if (isTestingConnection) return;
@@ -194,65 +238,58 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
 
     setIsHarvesting(true);
     try {
-      // 1. Check if the CURRENT user already has this character
-      const userExistingQuery = query(
-        collection(db, 'characters'),
-        where('ownerId', '==', user.uid),
-        where('name', '==', charName),
-        where('source', '==', charSource),
-        limit(1)
+      // 1. Check if the CURRENT user already has this character (Smart Match)
+      const existingInLocal = characters.find(c => 
+        isSmartMatch(c.name, c.source, charName, charSource)
       );
-      const userExistingSnapshot = await getDocs(userExistingQuery);
 
-      if (!userExistingSnapshot.empty) {
-        const existingChar = { id: userExistingSnapshot.docs[0].id, ...userExistingSnapshot.docs[0].data() } as Character;
-        setSelectedChar(existingChar);
+      if (existingInLocal) {
+        setSelectedChar(existingInLocal);
         setCharName('');
         setCharSource('');
         setIsCreating(false);
-        toast.info(`You already have a link with ${charName}.`);
+        toast.info(`You already have a link with ${existingInLocal.name}.`);
         return;
       }
 
-      // 2. Check if ANY user has this character to reuse profile and avatar
-      const globalExistingQuery = query(
-        collection(db, 'characters'),
-        where('name', '==', charName),
-        where('source', '==', charSource),
-        limit(1)
-      );
-      const globalExistingSnapshot = await getDocs(globalExistingQuery);
+      // 2. Check if ANY user has this character to reuse profile and avatar (Smart Match)
+      // We fetch all characters to ensure case-insensitivity and smart matching
+      const globalExistingSnapshot = await getDocs(collection(db, 'characters'));
+      const globalChars = globalExistingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Character));
       
-      let profile: string;
+      const globalMatch = globalChars.find(c => isSmartMatch(c.name, c.source, charName, charSource));
+      
+      let profile: any;
       let existingAvatar: string | undefined;
 
-      if (!globalExistingSnapshot.empty) {
-        const data = globalExistingSnapshot.docs[0].data();
-        profile = data.profile;
-        existingAvatar = data.avatarUrl;
-        toast.info("Existing dimensional frequency found. Syncing data...");
+      if (globalMatch) {
+        profile = { text: globalMatch.profile, tokensConsumed: 0 };
+        existingAvatar = globalMatch.avatarUrl;
+        toast.info(`Existing dimensional frequency found for ${globalMatch.name}. Syncing data...`);
       } else {
         profile = await harvestCharacterProfile(charName, charSource);
       }
 
       const characterData: any = {
-        name: charName,
-        source: charSource,
-        profile: profile,
+        name: globalMatch?.name || charName, // Use the existing name if matched
+        source: globalMatch?.source || charSource, // Use existing source if matched
+        profile: profile.text,
         ownerId: user.uid,
         createdAt: serverTimestamp(),
+        totalTokensConsumed: profile.tokensConsumed,
+        lastCalculationDatetime: serverTimestamp()
       };
 
       if (existingAvatar) {
         characterData.avatarUrl = existingAvatar;
       }
 
-      const newDoc = await addDoc(collection(db, 'characters'), characterData);
+      await addDoc(collection(db, 'characters'), characterData);
 
       setCharName('');
       setCharSource('');
       setIsCreating(false);
-      toast.success(`Connection established with ${charName}!`);
+      toast.success(`Connection established with ${characterData.name}!`);
     } catch (error: any) {
       console.error("Link Error:", error);
       toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
@@ -274,6 +311,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
         sender: 'user',
         text: userMsg,
         timestamp: serverTimestamp(),
+        tokensConsumed: 0,
       });
 
       // Only show typing if we aren't currently "offline"
@@ -307,13 +345,14 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
         history,
         userMsg,
         context
-      );
+      ) as { text: string; tokensConsumed: number };
 
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {
         chatId: selectedChar.id,
         sender: 'character',
-        text: aiResponse,
+        text: aiResponse.text,
         timestamp: serverTimestamp(),
+        tokensConsumed: aiResponse.tokensConsumed
       });
 
       setIsOffline(false);
@@ -331,7 +370,7 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer }: Chat
       <Sidebar 
         characters={characters}
         selectedChar={selectedChar}
-        onSelectChar={setSelectedChar}
+        onSelectChar={handleSelectChar}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         setIsCreating={setIsCreating}

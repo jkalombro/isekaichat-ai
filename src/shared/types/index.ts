@@ -5,6 +5,8 @@ export interface Character {
   profile: string;
   ownerId: string;
   avatarUrl?: string;
+  totalTokensConsumed?: number;
+  lastCalculationDatetime?: any;
 }
 
 export interface Message {
@@ -12,4 +14,5 @@ export interface Message {
   text: string;
   sender: 'user' | 'character';
   timestamp: any;
+  tokensConsumed?: number;
 }

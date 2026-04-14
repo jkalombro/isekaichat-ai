@@ -17,14 +17,17 @@ export async function harvestCharacterProfile(name: string, source: string) {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
     if (response.usageMetadata) {
       console.log(`[Token Usage - Profile Harvest] Input: ${response.usageMetadata.promptTokenCount}, Output: ${response.usageMetadata.candidatesTokenCount}, Total: ${response.usageMetadata.totalTokenCount}`);
     }
 
-    return response.text || "A mysterious character with no known profile.";
+    return {
+      text: response.text || "A mysterious character with no known profile.",
+      tokensConsumed: response.usageMetadata?.totalTokenCount || 0
+    };
   } catch (error: any) {
     console.error("Harvest Error:", error);
     throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
@@ -89,7 +92,7 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash-latest",
       contents: [...history, { role: 'user', parts: [{ text: userMessage }] }],
       config: {
         systemInstruction,
@@ -100,7 +103,10 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
       console.log(`[Token Usage - Chat] Input: ${response.usageMetadata.promptTokenCount}, Output: ${response.usageMetadata.candidatesTokenCount}, Total: ${response.usageMetadata.totalTokenCount}`);
     }
 
-    return response.text || "...";
+    return {
+      text: response.text || "...",
+      tokensConsumed: response.usageMetadata?.totalTokenCount || 0
+    };
   } catch (error: any) {
     console.error("Chat Error:", error);
     throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
@@ -111,8 +117,8 @@ export async function testGeminiConnection() {
   const ai = getAI();
   try {
     await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: "ping",
+      model: "gemini-1.5-flash-latest",
+      contents: [{ role: 'user', parts: [{ text: "ping" }] }],
     });
     return "stable";
   } catch (error: any) {

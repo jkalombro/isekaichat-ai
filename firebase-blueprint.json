@@ -23,6 +23,9 @@
         "name": { "type": "string" },
         "source": { "type": "string" },
         "profile": { "type": "string", "description": "The harvested personality profile from Gemini" },
+        "avatarUrl": { "type": "string" },
+        "totalTokensConsumed": { "type": "integer", "default": 0 },
+        "lastCalculationDatetime": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["ownerId", "name", "source", "profile"]
@@ -36,6 +39,7 @@
         "chatId": { "type": "string" },
         "sender": { "type": "string", "enum": ["user", "character"] },
         "text": { "type": "string" },
+        "tokensConsumed": { "type": "integer", "default": 0 },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["chatId", "sender", "text", "timestamp"]
