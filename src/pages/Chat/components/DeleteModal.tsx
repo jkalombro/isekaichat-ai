@@ -53,6 +53,7 @@ export const DeleteModal = ({
                     onChange={(e) => setDeleteConfirm(e.target.value)}
                     className="bg-muted/30 border-border/50 h-14 rounded-xl text-lg px-6 placeholder:opacity-30 font-bold"
                     placeholder="sever connection"
+                    autoComplete="off"
                   />
                 </div>
                 <div className="flex gap-4">

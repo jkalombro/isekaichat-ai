@@ -122,10 +122,16 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
 export async function testGeminiConnection() {
   const ai = getAI();
   try {
-    await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: geminiModel,
       contents: [{ role: 'user', parts: [{ text: "ping" }] }],
     });
+
+    
+    if (response.usageMetadata) {
+      console.log(`[Token Usage - Ping] Input: ${response.usageMetadata.promptTokenCount}, Output: ${response.usageMetadata.candidatesTokenCount}, Total: ${response.usageMetadata.totalTokenCount}`);
+    }
+
     return "stable";
   } catch (error: any) {
     console.error("Gemini Connection Test Error:", error);

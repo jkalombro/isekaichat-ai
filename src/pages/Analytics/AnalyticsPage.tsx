@@ -139,7 +139,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <Card className="p-4 flex flex-row items-center justify-between hover:border-orange-500/30 transition-colors group bg-card/50 backdrop-blur-sm">
+                    <Card className="p-4 flex lg:flex-row justify-between hover:border-orange-500/30 transition-colors group bg-card/50 backdrop-blur-sm">
                       <div className="flex items-center gap-4 min-w-0">
                         <div className="relative shrink-0">
                           <Avatar className="h-10 w-10 border border-border">
@@ -156,7 +156,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex items-center gap-4 shrink-0 justify-between md:space-x-0">
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-base font-black text-foreground">{(char.totalTokensConsumed || 0).toLocaleString()}</span>
                           <span className="text-[10px] text-muted-foreground uppercase tracking-tighter font-bold">Tokens</span>

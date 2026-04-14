@@ -56,6 +56,7 @@ export const CreateModal = ({
                       onChange={(e) => setCharName(e.target.value)}
                       className="bg-muted/30 border-border/50 h-14 rounded-xl text-lg px-6 placeholder:opacity-30 font-bold"
                       required
+                      autoComplete="off"
                     />
                   </div>
                   <div className="space-y-3">
@@ -66,6 +67,7 @@ export const CreateModal = ({
                       onChange={(e) => setCharSource(e.target.value)}
                       className="bg-muted/30 border-border/50 h-14 rounded-xl text-lg px-6 placeholder:opacity-30 font-bold"
                       required
+                      autoComplete="off"
                     />
                   </div>
                 </CardContent>
