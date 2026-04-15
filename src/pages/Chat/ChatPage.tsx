@@ -22,12 +22,22 @@ import { ChatHome } from './components/ChatHome';
 interface ChatPageProps {
   user: any;
   isAuthReady: boolean;
+  isAdmin: boolean;
   onLogout: () => void;
   onShowDisclaimer: () => void;
   onShowAnalytics: () => void;
+  onShowAdmin: () => void;
 }
 
-export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShowAnalytics }: ChatPageProps) => {
+export const ChatPage = ({ 
+  user, 
+  isAuthReady, 
+  isAdmin,
+  onLogout, 
+  onShowDisclaimer, 
+  onShowAnalytics,
+  onShowAdmin
+}: ChatPageProps) => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -113,6 +123,13 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
       calculateTokensForCharacter(selectedChar);
     }
     onShowDisclaimer();
+  };
+
+  const handleShowAdminWithCalc = () => {
+    if (selectedChar) {
+      calculateTokensForCharacter(selectedChar);
+    }
+    onShowAdmin();
   };
 
   const checkConnection = async () => {
@@ -424,9 +441,11 @@ export const ChatPage = ({ user, isAuthReady, onLogout, onShowDisclaimer, onShow
         setIsSidebarOpen={setIsSidebarOpen}
         setIsCreating={setIsCreating}
         user={user}
+        isAdmin={isAdmin}
         onLogout={handleLogoutWithCalc}
         onShowDisclaimer={handleShowDisclaimerWithCalc}
         onShowAnalytics={handleShowAnalyticsWithCalc}
+        onShowAdmin={handleShowAdminWithCalc}
       />
 
       <main className="flex-1 flex flex-col relative bg-background overflow-hidden">

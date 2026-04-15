@@ -8,6 +8,7 @@ import { LandingPage } from '@/pages/Landing/LandingPage';
 import { ChatPage } from '@/pages/Chat/ChatPage';
 import { DisclaimerPage } from '@/pages/Disclaimer/DisclaimerPage';
 import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage';
+import { AdminPage } from '@/pages/Admin/AdminPage';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { ProcessingOverlay } from '@/pages/Chat/components/ProcessingOverlay';
 
@@ -48,6 +49,9 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
 
   const handleLogin = async () => {
     try {
@@ -73,15 +77,19 @@ export default function App() {
         <DisclaimerPage onBack={() => setShowDisclaimer(false)} />
       ) : showAnalytics ? (
         <AnalyticsPage user={user} onBack={() => setShowAnalytics(false)} />
+      ) : showAdmin ? (
+        <AdminPage onBack={() => setShowAdmin(false)} />
       ) : !user ? (
         <LandingPage onLogin={handleLogin} onShowDisclaimer={() => setShowDisclaimer(true)} />
       ) : (
         <ChatPage 
           user={user} 
           isAuthReady={isAuthReady} 
+          isAdmin={isAdmin}
           onLogout={handleLogout} 
           onShowDisclaimer={() => setShowDisclaimer(true)}
           onShowAnalytics={() => setShowAnalytics(true)}
+          onShowAdmin={() => setShowAdmin(true)}
         />
       )}
       
