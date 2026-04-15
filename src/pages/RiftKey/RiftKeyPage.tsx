@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Key, Lock, Unlock, ArrowRight } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
 import { testGeminiConnection } from '@/shared/services/gemini';
 import { Button } from '@/shared/components/ui/button';
@@ -26,7 +26,8 @@ export const RiftKeyPage = ({ user, onLogout }: RiftKeyPageProps) => {
 
     setIsUnlocking(true);
     try {
-      const status = await testGeminiConnection(key.trim());
+      const trimmedKey = key.trim();
+      const status = await testGeminiConnection(trimmedKey);
       
       if (status === 'closed') {
         toast.error("The Rift Key provided is invalid or inactive.");
@@ -34,9 +35,20 @@ export const RiftKeyPage = ({ user, onLogout }: RiftKeyPageProps) => {
         return;
       }
 
+      // Final security check: Ensure key uniqueness
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('geminiKey', '==', trimmedKey));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        toast.error("This Rift Key is already linked to another traveler's consciousness.");
+        setIsUnlocking(false);
+        return;
+      }
+
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
-        geminiKey: key.trim()
+        geminiKey: trimmedKey
       });
       
       toast.success("Dimensional connection stabilized!");
