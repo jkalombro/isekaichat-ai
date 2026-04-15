@@ -53,6 +53,7 @@ export const ChatPage = ({
   const [isResettingMemories, setIsResettingMemories] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSeveringLink, setIsSeveringLink] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [resetConfirm, setResetConfirm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -373,6 +374,22 @@ export const ChatPage = ({
     const userMsg = newMessage.trim();
     setNewMessage('');
     
+    if (editingMessage) {
+      try {
+        const msgRef = doc(db, 'characters', selectedChar.id, 'messages', editingMessage.id);
+        await updateDoc(msgRef, {
+          text: userMsg,
+          isEdited: true, // Optional: track if edited
+        });
+        setEditingMessage(null);
+        toast.success("Message updated.");
+      } catch (error) {
+        console.error("Edit Error:", error);
+        toast.error("Failed to update message.");
+      }
+      return;
+    }
+
     try {
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {
         chatId: selectedChar.id,
@@ -469,6 +486,10 @@ export const ChatPage = ({
               isTyping={isTyping}
               isOffline={isOffline}
               scrollRef={scrollRef}
+              onEditMessage={(msg) => {
+                setEditingMessage(msg);
+                setNewMessage(msg.text);
+              }}
             />
             <MessageInput 
               newMessage={newMessage}
@@ -476,6 +497,11 @@ export const ChatPage = ({
               handleSendMessage={handleSendMessage}
               selectedChar={selectedChar}
               isTyping={isTyping}
+              isEditing={!!editingMessage}
+              onCancelEdit={() => {
+                setEditingMessage(null);
+                setNewMessage('');
+              }}
             />
           </>
         ) : (

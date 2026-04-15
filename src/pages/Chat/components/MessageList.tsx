@@ -13,6 +13,7 @@ interface MessageListProps {
   isTyping: boolean;
   isOffline: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
+  onEditMessage: (msg: Message) => void;
 }
 
 export const MessageList = ({
@@ -21,8 +22,26 @@ export const MessageList = ({
   user,
   isTyping,
   isOffline,
-  scrollRef
+  scrollRef,
+  onEditMessage
 }: MessageListProps) => {
+  const [longPressTimer, setLongPressTimer] = React.useState<NodeJS.Timeout | null>(null);
+
+  const handleTouchStart = (msg: Message) => {
+    if (msg.sender !== 'user') return;
+    const timer = setTimeout(() => {
+      onEditMessage(msg);
+    }, 600); // 600ms for long press
+    setLongPressTimer(timer);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
   return (
     <ScrollArea className="flex-1 h-full min-h-0 p-6" viewportRef={scrollRef}>
       <div className="max-w-3xl mx-auto space-y-6 pb-4">
@@ -38,6 +57,11 @@ export const MessageList = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`flex items-start gap-2 ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+            onMouseDown={() => handleTouchStart(msg)}
+            onMouseUp={handleTouchEnd}
+            onMouseLeave={handleTouchEnd}
+            onTouchStart={() => handleTouchStart(msg)}
+            onTouchEnd={handleTouchEnd}
           >
             <Avatar className="h-8 w-8 shrink-0 border border-border mb-1">
               <AvatarImage src={msg.sender === 'user' ? user.photoURL || '' : selectedChar.avatarUrl} />
