@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 
 interface AuthContextType {
-  user: User | null;
+  user: (User & { geminiKey?: string | null }) | null;
   loading: boolean;
   isAuthReady: boolean;
 }
@@ -12,27 +12,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({ user: null, loading: true, isAuthReady: false });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<(User & { geminiKey?: string | null }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
         // Sync user to Firestore
-        const userRef = doc(db, 'users', user.uid);
+        const userRef = doc(db, 'users', firebaseUser.uid);
         const userSnap = await getDoc(userRef);
         
+        let geminiKey = null;
+
         if (!userSnap.exists()) {
           await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            geminiKey: null,
             createdAt: serverTimestamp(),
           });
+        } else {
+          geminiKey = userSnap.data().geminiKey || null;
         }
-        setUser(user);
+        
+        // Combine Firebase Auth user with Firestore data
+        const combinedUser = Object.assign(firebaseUser, { geminiKey });
+        setUser(combinedUser);
       } else {
         setUser(null);
       }

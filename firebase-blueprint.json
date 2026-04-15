@@ -9,6 +9,7 @@
         "email": { "type": "string" },
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
+        "geminiKey": { "type": "string", "default": null },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email"]

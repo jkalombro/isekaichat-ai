@@ -135,7 +135,7 @@ export const ChatPage = ({
   const checkConnection = async () => {
     if (isTestingConnection) return;
     setIsTestingConnection(true);
-    const status = await testGeminiConnection();
+    const status = await testGeminiConnection(user.geminiKey);
     setGeminiStatus(status);
     setIsTestingConnection(false);
   };
@@ -329,7 +329,7 @@ export const ChatPage = ({
         existingAvatar = globalMatch.avatarUrl;
         toast.info(`Existing dimensional frequency found for ${globalMatch.name}. Syncing data...`);
       } else {
-        profile = await harvestCharacterProfile(charName, charSource);
+        profile = await harvestCharacterProfile(charName, charSource, user.geminiKey);
       }
 
       const characterData: any = {
@@ -410,7 +410,8 @@ export const ChatPage = ({
         selectedChar.profile,
         history,
         userMsg,
-        context
+        context,
+        user.geminiKey
       ) as { text: string; tokensConsumed: number };
 
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {

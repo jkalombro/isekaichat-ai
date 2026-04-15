@@ -1,17 +1,17 @@
 import { GoogleGenAI } from "@google/genai";
 
-const getAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "GEMINI_API_KEY") {
-    throw new Error("Gemini API key is not configured. Please ensure GEMINI_API_KEY is set in your environment.");
+const getAI = (customKey?: string | null) => {
+  const apiKey = customKey;
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please ensure your Rift Key is set.");
   }
   return new GoogleGenAI({ apiKey });
 };
 
 const geminiModel = "gemini-3.1-flash-lite-preview";
 
-export async function harvestCharacterProfile(name: string, source: string) {
-  const ai = getAI();
+export async function harvestCharacterProfile(name: string, source: string, customKey?: string | null) {
+  const ai = getAI(customKey);
   const prompt = `Give me a detailed personality profile for the character "${name}" from "${source}". 
   Focus on their speech patterns, vocabulary, typical mood, and core beliefs. 
   Keep it concise but comprehensive enough for a roleplay engine to embody them.
@@ -50,9 +50,10 @@ export async function getCharacterResponse(
     lastConversationTime?: string;
     wasOffline?: boolean;
     userDidNotAnswerQuestion?: boolean;
-  }
+  },
+  customKey?: string | null
 ) {
-  const ai = getAI();
+  const ai = getAI(customKey);
   const now = new Date().toISOString();
   
   let situationalContext = "";
@@ -119,8 +120,8 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
   }
 }
 
-export async function testGeminiConnection() {
-  const ai = getAI();
+export async function testGeminiConnection(customKey?: string | null) {
+  const ai = getAI(customKey);
   try {
     const response = await ai.models.generateContent({
       model: geminiModel,

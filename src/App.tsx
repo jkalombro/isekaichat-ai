@@ -9,6 +9,7 @@ import { ChatPage } from '@/pages/Chat/ChatPage';
 import { DisclaimerPage } from '@/pages/Disclaimer/DisclaimerPage';
 import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage';
 import { AdminPage } from '@/pages/Admin/AdminPage';
+import { RiftKeyPage } from '@/pages/RiftKey/RiftKeyPage';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { ProcessingOverlay } from '@/pages/Chat/components/ProcessingOverlay';
 
@@ -81,6 +82,8 @@ export default function App() {
         <AdminPage onBack={() => setShowAdmin(false)} />
       ) : !user ? (
         <LandingPage onLogin={handleLogin} onShowDisclaimer={() => setShowDisclaimer(true)} />
+      ) : !user.geminiKey ? (
+        <RiftKeyPage user={user} onLogout={handleLogout} />
       ) : (
         <ChatPage 
           user={user} 

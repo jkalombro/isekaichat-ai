@@ -220,7 +220,7 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
                 <div className="space-y-3">
                   {selectedUserForBreakdown.characters && selectedUserForBreakdown.characters.length > 0 ? (
                     selectedUserForBreakdown.characters.map((char, idx) => (
-                      <Card key={char.id} className="p-4 flex flex-row justify-between bg-muted/20 border-border/50">
+                      <Card key={char.id} className="p-4 flex flex-col md:flex-row justify-between bg-muted/20 border-border/50">
                         <div className="flex items-center gap-3 min-w-[180px]">
                           <Avatar className="h-8 w-8 border border-border">
                             <AvatarImage src={char.avatarUrl} />
@@ -231,7 +231,7 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
                             <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate">{char.source}</p>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end min-w-[100px] text-right">
+                        <div className="flex flex-row items-end gap-1.5 min-w-[100px] text-left md:text-right">
                           <p className="text-sm font-black">{(char.totalTokensConsumed || 0).toLocaleString()}</p>
                           <p className="text-[8px] text-muted-foreground uppercase font-bold">Tokens</p>
                         </div>
