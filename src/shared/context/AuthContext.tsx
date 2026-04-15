@@ -3,7 +3,7 @@ import { auth, onAuthStateChanged, db } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 
-export type GeminiModel = 'gemini-3.1-flash-lite-preview' | 'gemini-3.1-flash-preview';
+export type GeminiModel = 'gemini-3.1-flash-lite-preview' | 'gemini-3-flash-preview';
 
 interface AuthContextType {
   user: (User & { geminiKey?: string | null }) | null;

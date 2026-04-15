@@ -170,15 +170,15 @@ export const ChatHome = ({
               3.1 Lite
             </button>
             <button
-              onClick={() => setSelectedModel('gemini-3.1-flash-preview')}
+              onClick={() => setSelectedModel('gemini-3-flash-preview')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                selectedModel === 'gemini-3.1-flash-preview'
+                selectedModel === 'gemini-3-flash-preview'
                   ? 'bg-primary text-primary-foreground shadow-lg'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Zap className="w-3 h-3" />
-              3.1 Flash
+              3 Flash
             </button>
           </div>
         </div>
