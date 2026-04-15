@@ -18,6 +18,7 @@ import { ResetModal } from './components/ResetModal';
 import { DeleteModal } from './components/DeleteModal';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { ChatHome } from './components/ChatHome';
+import { useAuth } from '@/shared/context/AuthContext';
 
 interface ChatPageProps {
   user: any;
@@ -38,6 +39,7 @@ export const ChatPage = ({
   onShowAnalytics,
   onShowAdmin
 }: ChatPageProps) => {
+  const { selectedModel } = useAuth();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -135,7 +137,7 @@ export const ChatPage = ({
   const checkConnection = async () => {
     if (isTestingConnection) return;
     setIsTestingConnection(true);
-    const status = await testGeminiConnection(user.geminiKey);
+    const status = await testGeminiConnection(user.geminiKey, selectedModel);
     setGeminiStatus(status);
     setIsTestingConnection(false);
   };
@@ -329,7 +331,7 @@ export const ChatPage = ({
         existingAvatar = globalMatch.avatarUrl;
         toast.info(`Existing dimensional frequency found for ${globalMatch.name}. Syncing data...`);
       } else {
-        profile = await harvestCharacterProfile(charName, charSource, user.geminiKey);
+        profile = await harvestCharacterProfile(charName, charSource, user.geminiKey, selectedModel);
       }
 
       const characterData: any = {
@@ -411,7 +413,8 @@ export const ChatPage = ({
         history,
         userMsg,
         context,
-        user.geminiKey
+        user.geminiKey,
+        selectedModel
       ) as { text: string; tokensConsumed: number };
 
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Shield, TrendingUp, Users, Zap, X, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Shield, TrendingUp, Users, Zap, X, BarChart3, Loader2 } from 'lucide-react';
 import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
 import { Character } from '@/shared/types';
@@ -74,6 +74,7 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
   }, [isModalOpen]);
 
   const totalGlobalTokens = users.reduce((acc, user) => acc + (user.totalTokens || 0), 0);
+  const globalPhpCost = totalGlobalTokens * 0.00000855;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -97,7 +98,9 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
                 <Zap className="w-12 h-12 text-primary" />
               </div>
               <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Global Consumption</p>
-              <h2 className="text-3xl font-black text-primary">{totalGlobalTokens.toLocaleString()}</h2>
+              <h2 className="text-3xl font-black text-primary">
+                {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : totalGlobalTokens.toLocaleString()}
+              </h2>
               <p className="text-[10px] text-muted-foreground mt-2">TOTAL_RIFT_ENERGY</p>
             </Card>
 
@@ -106,7 +109,9 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
                 <Users className="w-12 h-12 text-foreground" />
               </div>
               <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Total Travelers</p>
-              <h2 className="text-3xl font-black">{users.length}</h2>
+              <h2 className="text-3xl font-black">
+                {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : users.length}
+              </h2>
               <p className="text-[10px] text-muted-foreground mt-2">ACTIVE_CONSCIOUSNESS</p>
             </Card>
 
@@ -114,11 +119,11 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <TrendingUp className="w-12 h-12 text-foreground" />
               </div>
-              <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Avg per Traveler</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Token Cost Calc</p>
               <h2 className="text-3xl font-black">
-                {users.length > 0 ? Math.round(totalGlobalTokens / users.length).toLocaleString() : 0}
+                {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : `₱${globalPhpCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </h2>
-              <p className="text-[10px] text-muted-foreground mt-2">SYSTEM_EFFICIENCY</p>
+              <p className="text-[10px] text-muted-foreground mt-2">GLOBAL_PHP_COST</p>
             </Card>
           </div>
 

@@ -8,9 +8,9 @@ const getAI = (customKey?: string | null) => {
   return new GoogleGenAI({ apiKey });
 };
 
-const geminiModel = "gemini-3.1-flash-lite-preview";
+const geminiModelDefault = "gemini-3.1-flash-lite-preview";
 
-export async function harvestCharacterProfile(name: string, source: string, customKey?: string | null) {
+export async function harvestCharacterProfile(name: string, source: string, customKey?: string | null, model: string = geminiModelDefault) {
   const ai = getAI(customKey);
   const prompt = `Give me a detailed personality profile for the character "${name}" from "${source}". 
   Focus on their speech patterns, vocabulary, typical mood, and core beliefs. 
@@ -20,7 +20,7 @@ export async function harvestCharacterProfile(name: string, source: string, cust
 
   try {
     const response = await ai.models.generateContent({
-      model: geminiModel,
+      model: model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
@@ -51,7 +51,8 @@ export async function getCharacterResponse(
     wasOffline?: boolean;
     userDidNotAnswerQuestion?: boolean;
   },
-  customKey?: string | null
+  customKey?: string | null,
+  model: string = geminiModelDefault
 ) {
   const ai = getAI(customKey);
   const now = new Date().toISOString();
@@ -99,7 +100,7 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: geminiModel,
+      model: model,
       contents: [...history, { role: 'user', parts: [{ text: userMessage }] }],
       config: {
         systemInstruction,
@@ -120,11 +121,11 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
   }
 }
 
-export async function testGeminiConnection(customKey?: string | null) {
+export async function testGeminiConnection(customKey?: string | null, model: string = geminiModelDefault) {
   const ai = getAI(customKey);
   try {
     const response = await ai.models.generateContent({
-      model: geminiModel,
+      model: model,
       contents: [{ role: 'user', parts: [{ text: "ping" }] }],
     });
 

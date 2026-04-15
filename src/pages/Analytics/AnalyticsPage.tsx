@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, BarChart3, TrendingUp, Users, Zap, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, TrendingUp, Users, Zap, X, Loader2 } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
 import { Character, Message } from '@/shared/types';
@@ -73,6 +73,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
   };
 
   const totalTokens = characters.reduce((acc, char) => acc + (char.totalTokensConsumed || 0), 0);
+  const phpCost = totalTokens * 0.00000855;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -96,7 +97,9 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                 <Zap className="w-12 h-12 text-primary" />
               </div>
               <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Total Consumption</p>
-              <h2 className="text-3xl font-black text-primary">{totalTokens.toLocaleString()}</h2>
+              <h2 className="text-3xl font-black text-primary">
+                {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : totalTokens.toLocaleString()}
+              </h2>
               <p className="text-[10px] text-muted-foreground mt-2">TOKENS_EXCHANGED</p>
             </Card>
 
@@ -105,7 +108,9 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                 <Users className="w-12 h-12 text-foreground" />
               </div>
               <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Active Links</p>
-              <h2 className="text-3xl font-black">{characters.length}</h2>
+              <h2 className="text-3xl font-black">
+                {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : characters.length}
+              </h2>
               <p className="text-[10px] text-muted-foreground mt-2">DIMENSIONAL_ENTITIES</p>
             </Card>
 
@@ -113,11 +118,11 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <TrendingUp className="w-12 h-12 text-foreground" />
               </div>
-              <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Avg per Link</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Token Cost Calc</p>
               <h2 className="text-3xl font-black">
-                {characters.length > 0 ? Math.round(totalTokens / characters.length).toLocaleString() : 0}
+                {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : `₱${phpCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </h2>
-              <p className="text-[10px] text-muted-foreground mt-2">EFFICIENCY_RATING</p>
+              <p className="text-[10px] text-muted-foreground mt-2">ESTIMATED_PHP_COST</p>
             </Card>
           </div>
 
