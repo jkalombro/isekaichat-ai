@@ -138,8 +138,18 @@ export const ChatPage = ({
   const checkConnection = async () => {
     if (isTestingConnection) return;
     setIsTestingConnection(true);
-    const status = await testGeminiConnection(user.geminiKey, selectedModel);
-    setGeminiStatus(status);
+    const result = await testGeminiConnection(user.geminiKey, selectedModel);
+    
+    if (result === 'stable') {
+      setGeminiStatus('stable');
+    } else if (result === 'unstable') {
+      setGeminiStatus('unstable');
+    } else {
+      setGeminiStatus('closed');
+      if (isAdmin) {
+        toast.error(`Gemini Connection Error: ${result}`);
+      }
+    }
     setIsTestingConnection(false);
   };
 
@@ -158,7 +168,8 @@ export const ChatPage = ({
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const chars = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Character));
+          .map(doc => ({ id: doc.id, ...doc.data() } as Character))
+          .sort((a, b) => (b.totalTokensConsumed || 0) - (a.totalTokensConsumed || 0));
         setCharacters(chars);
       }, (error) => {
         console.error("Characters Fetch Error:", error);

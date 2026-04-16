@@ -142,6 +142,7 @@ export async function testGeminiConnection(customKey?: string | null, model: str
     if (status === 503) {
       return "unstable";
     }
-    return "closed";
+    // Return the full error message if it's not a 503
+    return error.message || JSON.stringify(error);
   }
 }
