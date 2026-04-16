@@ -44,9 +44,24 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["chatId", "sender", "text", "timestamp"]
+    },
+    "AppStatus": {
+      "title": "AppStatus",
+      "description": "Global application status and maintenance settings",
+      "type": "object",
+      "properties": {
+        "isMaintenanceMode": { "type": "boolean" },
+        "maintenanceStartDateTime": { "type": "string", "format": "date-time" },
+        "maintenanceEndDateTime": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isMaintenanceMode"]
     }
   },
   "firestore": {
+    "/appstatus/{statusId}": {
+      "schema": "AppStatus",
+      "description": "Global app status configuration"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User private data"

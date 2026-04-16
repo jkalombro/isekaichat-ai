@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, onAuthStateChanged, db } from '../services/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, collection, limit, query } from 'firebase/firestore';
 import { User } from 'firebase/auth';
+import { AppStatus } from '../types';
 
 export type GeminiModel = 'gemini-3.1-flash-lite-preview' | 'gemini-3-flash-preview';
 
@@ -11,6 +12,8 @@ interface AuthContextType {
   isAuthReady: boolean;
   selectedModel: GeminiModel;
   setSelectedModel: (model: GeminiModel) => void;
+  appStatus: AppStatus | null;
+  loadingStatus: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -18,7 +21,9 @@ const AuthContext = createContext<AuthContextType>({
   loading: true, 
   isAuthReady: false,
   selectedModel: 'gemini-3.1-flash-lite-preview',
-  setSelectedModel: () => {}
+  setSelectedModel: () => {},
+  appStatus: null,
+  loadingStatus: true
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,6 +31,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-3.1-flash-lite-preview');
+  const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, 'appstatus'), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        setAppStatus(snapshot.docs[0].data() as AppStatus);
+      } else {
+        setAppStatus({ isMaintenanceMode: false });
+      }
+      setLoadingStatus(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -66,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthReady, selectedModel, setSelectedModel }}>
+    <AuthContext.Provider value={{ user, loading, isAuthReady, selectedModel, setSelectedModel, appStatus, loadingStatus }}>
       {children}
     </AuthContext.Provider>
   );

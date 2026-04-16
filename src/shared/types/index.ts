@@ -16,3 +16,9 @@ export interface Message {
   timestamp: any;
   tokensConsumed?: number;
 }
+
+export interface AppStatus {
+  isMaintenanceMode: boolean;
+  maintenanceStartDateTime?: any;
+  maintenanceEndDateTime?: any;
+}

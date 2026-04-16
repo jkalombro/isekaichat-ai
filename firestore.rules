@@ -84,9 +84,21 @@ service cloud.firestore {
           (request.auth.token.email == "jkninja238@gmail.com" && request.auth.token.email_verified == true));
     }
 
+    function isValidAppStatus(data) {
+      return data.keys().hasAll(['isMaintenanceMode']) &&
+             data.isMaintenanceMode is bool &&
+             (!('maintenanceStartDateTime' in data) || data.maintenanceStartDateTime == null || data.maintenanceStartDateTime is timestamp) &&
+             (!('maintenanceEndDateTime' in data) || data.maintenanceEndDateTime == null || data.maintenanceEndDateTime is timestamp);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /appstatus/{statusId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidAppStatus(request.resource.data);
+    }
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();

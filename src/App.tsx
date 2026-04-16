@@ -10,6 +10,7 @@ import { DisclaimerPage } from '@/pages/Disclaimer/DisclaimerPage';
 import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage';
 import { AdminPage } from '@/pages/Admin/AdminPage';
 import { RiftKeyPage } from '@/pages/RiftKey/RiftKeyPage';
+import { MaintenancePage } from '@/pages/Maintenance/MaintenancePage';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { ProcessingOverlay } from '@/pages/Chat/components/ProcessingOverlay';
 
@@ -46,7 +47,7 @@ const Splash = () => (
 );
 
 export default function App() {
-  const { user, loading, isAuthReady } = useAuth();
+  const { user, loading, isAuthReady, appStatus, loadingStatus } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
@@ -68,8 +69,13 @@ export default function App() {
 
   const handleLogout = () => signOut(auth);
 
-  if (loading) {
+  if (loading || loadingStatus) {
     return <Splash />;
+  }
+
+  // Maintenance Redirection Logic - Only if user is logged in and NOT an admin
+  if (appStatus?.isMaintenanceMode && user && !isAdmin) {
+    return <MaintenancePage status={appStatus} onLogout={handleLogout} />;
   }
 
   return (
