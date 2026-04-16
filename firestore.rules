@@ -108,6 +108,10 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
         allow create: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) && isValidMessage(request.resource.data);
+        allow update: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) && 
+                      isValidMessage(request.resource.data) && 
+                      resource.data.sender == 'user' &&
+                      request.resource.data.sender == 'user';
         allow delete: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
       }
     }
