@@ -27,7 +27,7 @@ export const RiftKeyPage = ({ user, onLogout }: RiftKeyPageProps) => {
     setIsUnlocking(true);
     try {
       const trimmedKey = key.trim();
-      const status = await testGeminiConnection(trimmedKey);
+      const status = await testGeminiConnection(trimmedKey, 'gemini-3-flash-preview');
       
       if (status === 'closed') {
         toast.error("The Rift Key provided is invalid or inactive.");
