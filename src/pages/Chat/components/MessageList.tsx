@@ -31,7 +31,7 @@ export const MessageList = ({
     if (msg.sender !== 'user') return;
     const timer = setTimeout(() => {
       onEditMessage(msg);
-    }, 600); // 600ms for long press
+    }, 1000); // 1s for long press
     setLongPressTimer(timer);
   };
 
