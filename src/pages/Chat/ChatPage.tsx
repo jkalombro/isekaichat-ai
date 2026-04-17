@@ -17,6 +17,7 @@ import { CreateModal } from './components/CreateModal';
 import { ResetModal } from './components/ResetModal';
 import { DeleteModal } from './components/DeleteModal';
 import { MaintenanceModal } from './components/MaintenanceModal';
+import { ManualModal } from './components/ManualModal';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { ChatHome } from './components/ChatHome';
 import { useAuth } from '@/shared/context/AuthContext';
@@ -54,6 +55,7 @@ export const ChatPage = ({
   const [isResettingMemories, setIsResettingMemories] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isSeveringLink, setIsSeveringLink] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [resetConfirm, setResetConfirm] = useState('');
@@ -525,6 +527,7 @@ export const ChatPage = ({
             checkConnection={checkConnection}
             setIsCreating={setIsCreating}
             setIsSidebarOpen={setIsSidebarOpen}
+            onOpenManual={() => setIsManualModalOpen(true)}
           />
         )}
       </main>
@@ -561,6 +564,11 @@ export const ChatPage = ({
       <MaintenanceModal 
         isOpen={isMaintenanceModalOpen}
         onClose={() => setIsMaintenanceModalOpen(false)}
+      />
+
+      <ManualModal 
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
       />
 
       <ProcessingOverlay 
