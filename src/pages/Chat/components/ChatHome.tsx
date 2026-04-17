@@ -4,7 +4,8 @@ import { Button } from '@/shared/components/ui/button';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { APP_VERSION } from '@/shared/constants';
 import { useAuth, GeminiModel } from '@/shared/context/AuthContext';
-import { Zap, ZapOff, HelpCircle } from 'lucide-react';
+import { Zap, ZapOff, HelpCircle, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/shared/context/ThemeContext';
 
 interface ChatHomeProps {
   geminiStatus: 'stable' | 'unstable' | 'closed';
@@ -24,11 +25,12 @@ export const ChatHome = ({
   onOpenManual
 }: ChatHomeProps) => {
   const { selectedModel, setSelectedModel } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8 relative overflow-hidden">
-      {/* Manual Button */}
-      <div className="absolute top-6 right-6 z-[20]">
+      {/* Manual & Theme Buttons */}
+      <div className="absolute top-6 right-6 z-[20] flex flex-col gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -36,6 +38,18 @@ export const ChatHome = ({
           className="rounded-full hover:bg-muted/50 transition-colors w-10 h-10 shadow-lg shadow-black/5"
         >
           <HelpCircle className="w-5 h-5 text-muted-foreground" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="rounded-full hover:bg-muted/50 transition-colors w-10 h-10 shadow-lg shadow-black/5"
+        >
+          {theme === 'light' ? (
+            <Moon className="w-5 h-5 text-muted-foreground" />
+          ) : (
+            <Sun className="w-5 h-5 text-muted-foreground" />
+          )}
         </Button>
       </div>
 
