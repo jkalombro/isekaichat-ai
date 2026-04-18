@@ -22,7 +22,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
   const [charMessages, setCharMessages] = useState<any[]>([]);
   const [charSummaryData, setCharSummaryData] = useState<any[]>([]);
   const [activeGraphType, setActiveGraphType] = useState<'conversation' | 'summarization'>('conversation');
-  const [modalTotals, setModalTotals] = useState({ overall: 0, conversation: 0, summary: 0 });
+  const [modalTotals, setModalTotals] = useState({ overall: 0, conversation: 0, summary: 0, messages: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
 
@@ -53,13 +53,14 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
     // Reset data for new character
     setCharMessages([]);
     setCharSummaryData([]);
-    setModalTotals({ overall: 0, conversation: 0, summary: 0 });
+    setModalTotals({ overall: 0, conversation: 0, summary: 0, messages: 0 });
     
     try {
       // Fetch Messages
       const msgQ = query(collection(db, 'characters', char.id, 'messages'));
       const msgSnapshot = await getDocs(msgQ);
       let totalConversation = 0;
+      const totalMessagesCount = msgSnapshot.size;
       const conversationData = msgSnapshot.docs.map(doc => {
         const data = doc.data() as Message;
         const tokens = data.tokensConsumed || 0;
@@ -99,7 +100,8 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
       setModalTotals({
         overall: totalConversation + totalSummary,
         conversation: totalConversation,
-        summary: totalSummary
+        summary: totalSummary,
+        messages: totalMessagesCount
       });
       setActiveGraphType('conversation');
     } catch (error) {
@@ -229,7 +231,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
       {/* Graph Modal */}
       <AnimatePresence>
         {isModalOpen && selectedCharForGraph && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -259,7 +261,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                 </Button>
               </div>
 
-              <div className="p-8">
+              <div className="p-4 sm:p-8">
                 {/* Graph Toggle */}
                 <div className="flex bg-muted/50 p-1 rounded-xl mb-6 w-fit mx-auto border border-border">
                   <button
@@ -335,16 +337,20 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                   )}
                 </div>
                 
-                <div className="mt-8 p-6 bg-primary/5 rounded-3xl border border-primary/10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="mt-4 sm:mt-8 p-4 sm:p-6 bg-primary/5 rounded-3xl border border-primary/10 grid grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-6">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Overall Total</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Total Tokens</p>
                     <p className="text-lg font-black text-primary truncate leading-none">{modalTotals.overall.toLocaleString()}</p>
                   </div>
-                  <div className="md:border-x border-y md:border-y-0 border-primary/10 md:px-6 py-6 md:py-0 space-y-1">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Messages</p>
+                    <p className="text-lg font-black truncate leading-none">{modalTotals.messages.toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1 pt-4 border-t border-primary/5">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Conversation</p>
                     <p className="text-lg font-black truncate leading-none">{modalTotals.conversation.toLocaleString()}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 pt-4 border-t border-primary/5">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Summary</p>
                     <p className="text-lg font-black truncate leading-none">{modalTotals.summary.toLocaleString()}</p>
                   </div>
