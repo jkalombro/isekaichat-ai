@@ -26,7 +26,9 @@ export async function harvestCharacterProfile(name: string, source: string, cust
     });
 
     const text = response.text?.trim() || "";
-    if (text === "CHARACTER_NOT_FOUND") {
+    const cleanText = text.toUpperCase().replace(/[^A-Z_]/g, '');
+    
+    if (cleanText === "CHARACTER_NOT_FOUND" || cleanText.includes("CHARACTERNOTFOUND")) {
       throw new Error("CHARACTER_NOT_FOUND");
     }
 

@@ -405,7 +405,10 @@ export const ChatPage = ({
       const globalExistingSnapshot = await getDocs(collection(db, 'characters'));
       const globalChars = globalExistingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Character));
       
-      const globalMatch = globalChars.find(c => isSmartMatch(c.name, c.source, charName, charSource));
+      const globalMatch = globalChars.find(c => 
+        isSmartMatch(c.name, c.source, charName, charSource) && 
+        c.profile !== "CHARACTER_NOT_FOUND"
+      );
       
       let profile: any;
       let existingAvatar: string | undefined;
@@ -416,6 +419,10 @@ export const ChatPage = ({
         toast.info(`Existing dimensional frequency found for ${globalMatch.name}. Syncing data...`);
       } else {
         profile = await harvestCharacterProfile(charName, charSource, user.geminiKey, selectedModel);
+      }
+
+      if (!profile || !profile.text || profile.text.toUpperCase().includes("CHARACTER_NOT_FOUND")) {
+        throw new Error("CHARACTER_NOT_FOUND");
       }
 
       const characterData: any = {

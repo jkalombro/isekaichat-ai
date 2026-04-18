@@ -88,8 +88,14 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "jkninja238@gmail.com" && request.auth.token.email_verified == true));
+        (request.auth.token.email == "jkninja238@gmail.com" && request.auth.token.email_verified == true ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    function isHardcodedAdmin() {
+      return isAuthenticated() &&
+        request.auth.token.email == "jkninja238@gmail.com" &&
+        request.auth.token.email_verified == true;
     }
 
     function isValidAppStatus(data) {
@@ -110,7 +116,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAuthenticated(); // Required for Rift Key uniqueness check
+      allow list: if isAuthenticated() && (resource.data.uid == request.auth.uid || isHardcodedAdmin());
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
                     request.resource.data.uid == resource.data.uid;
@@ -118,7 +124,7 @@ service cloud.firestore {
 
     match /characters/{characterId} {
       allow get: if isAuthenticated();
-      allow list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow list: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isHardcodedAdmin());
       allow create: if isAuthenticated() && isValidCharacter(request.resource.data);
       allow update: if (isCharOwner(resource.data) || isAdmin() || 
                        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'totalTokensConsumed', 'lastCalculationDatetime', 'memories', 'lastSummarizedIndex']))) && 
