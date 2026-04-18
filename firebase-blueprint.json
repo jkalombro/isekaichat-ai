@@ -27,9 +27,22 @@
         "avatarUrl": { "type": "string" },
         "totalTokensConsumed": { "type": "integer", "default": 0 },
         "lastCalculationDatetime": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "memories": { "type": "string", "default": "" },
+        "lastSummarizedIndex": { "type": "integer", "default": 0 }
       },
       "required": ["ownerId", "name", "source", "profile"]
+    },
+    "SummaryTokens": {
+      "title": "SummaryTokens",
+      "description": "Tracks tokens consumed by background summarization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tokensConsumed": { "type": "integer" },
+        "dateTimeSummarized": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tokensConsumed", "dateTimeSummarized"]
     },
     "Message": {
       "title": "Message",
@@ -73,6 +86,10 @@
     "/characters/{characterId}/messages/{messageId}": {
       "schema": "Message",
       "description": "Chat history for a character"
+    },
+    "/characters/{characterId}/summarytokens/{tokenId}": {
+      "schema": "SummaryTokens",
+      "description": "Tokens consumed during background summarization"
     }
   }
 }

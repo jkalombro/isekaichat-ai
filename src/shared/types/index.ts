@@ -7,6 +7,14 @@ export interface Character {
   avatarUrl?: string;
   totalTokensConsumed?: number;
   lastCalculationDatetime?: any;
+  memories?: string;
+  lastSummarizedIndex?: number;
+}
+
+export interface SummaryTokens {
+  id: string;
+  tokensConsumed: number;
+  dateTimeSummarized: any;
 }
 
 export interface Message {

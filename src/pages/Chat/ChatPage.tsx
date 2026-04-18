@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { MessageCircle, Link2Off } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
-import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection } from '@/shared/services/gemini';
+import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
 import { Character, Message } from '@/shared/types';
 import { isSmartMatch } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
@@ -74,20 +74,39 @@ export const ChatPage = ({
     
     try {
       const lastCalc = character.lastCalculationDatetime;
-      let q;
+      
+      // Query messages tokens
+      let msgQ;
       if (lastCalc) {
-        q = query(
+        msgQ = query(
           collection(db, 'characters', character.id, 'messages'),
           where('timestamp', '>', lastCalc)
         );
       } else {
-        q = query(collection(db, 'characters', character.id, 'messages'));
+        msgQ = query(collection(db, 'characters', character.id, 'messages'));
       }
 
-      const snapshot = await getDocs(q);
+      const msgSnapshot = await getDocs(msgQ);
       let newTokens = 0;
-      snapshot.docs.forEach(doc => {
+      msgSnapshot.docs.forEach(doc => {
         const data = doc.data() as Message;
+        newTokens += (data.tokensConsumed || 0);
+      });
+
+      // Query summary tokens
+      let sumQ;
+      if (lastCalc) {
+        sumQ = query(
+          collection(db, 'characters', character.id, 'summarytokens'),
+          where('dateTimeSummarized', '>', lastCalc)
+        );
+      } else {
+        sumQ = query(collection(db, 'characters', character.id, 'summarytokens'));
+      }
+
+      const sumSnapshot = await getDocs(sumQ);
+      sumSnapshot.docs.forEach(doc => {
+        const data = doc.data() as { tokensConsumed: number };
         newTokens += (data.tokensConsumed || 0);
       });
 
@@ -137,6 +156,47 @@ export const ChatPage = ({
       calculateTokensForCharacter(selectedChar);
     }
     onShowAdmin();
+  };
+
+  const checkAndSummarize = async (character: Character, allMsgs: Message[]) => {
+    if (!user) return;
+    const lastSummaryIndex = character.lastSummarizedIndex || 0;
+    const messagesSinceLastSummary = allMsgs.slice(lastSummaryIndex);
+    
+    if (messagesSinceLastSummary.length >= 14) {
+      // Summarize everything EXCEPT the last 4 messages
+      const countToSummarize = messagesSinceLastSummary.length - 4;
+      const msgsToSummarize = messagesSinceLastSummary.slice(0, countToSummarize);
+      
+      try {
+        const result = await summarizeConversation(
+          character.name,
+          character.source,
+          character.memories || "",
+          msgsToSummarize,
+          user.geminiKey
+        );
+        
+        // Update character with new memories and new index
+        const charRef = doc(db, 'characters', character.id);
+        const newIndex = lastSummaryIndex + countToSummarize;
+        
+        await updateDoc(charRef, {
+          memories: result.text,
+          lastSummarizedIndex: newIndex
+        });
+        
+        // Record tokens consumed
+        await addDoc(collection(db, 'characters', character.id, 'summarytokens'), {
+          tokensConsumed: result.tokensConsumed,
+          dateTimeSummarized: serverTimestamp()
+        });
+        
+        console.log(`[Summary Sync] Memory updated and ${result.tokensConsumed} tokens recorded.`);
+      } catch (error) {
+        console.error("Background Summarization Error:", error);
+      }
+    }
   };
 
   const checkConnection = async () => {
@@ -227,6 +287,14 @@ export const ChatPage = ({
       snapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
       });
+      
+      // Clear memories and index too
+      const charRef = doc(db, 'characters', selectedChar.id);
+      batch.update(charRef, {
+        memories: "",
+        lastSummarizedIndex: 0
+      });
+
       await batch.commit();
       setResetConfirm('');
       setIsResetting(false);
@@ -419,7 +487,9 @@ export const ChatPage = ({
         setIsTyping(true);
       }
 
-      const history = messages.map(m => ({
+      // Filter history to only include messages after lastSummarizedIndex
+      const lastSummaryIndex = selectedChar.lastSummarizedIndex || 0;
+      const history = messages.slice(lastSummaryIndex).map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.text }]
       }));
@@ -430,12 +500,12 @@ export const ChatPage = ({
       
       const userDidNotAnswerQuestion = lastCharMsg?.text.includes('?') && 
         (!lastUserMsgBeforeThis || !lastUserMsgBeforeThis.text.toLowerCase().includes('yes') && !lastUserMsgBeforeThis.text.toLowerCase().includes('no'));
-        // This is a very simple heuristic for "did not answer question"
 
       const context = {
         lastConversationTime: lastCharMsg?.timestamp?.toDate?.()?.toISOString() || lastCharMsg?.timestamp?.toString(),
         wasOffline: isOffline,
-        userDidNotAnswerQuestion: userDidNotAnswerQuestion
+        userDidNotAnswerQuestion: userDidNotAnswerQuestion,
+        memories: selectedChar.memories
       };
 
       const aiResponse = await getCharacterResponse(
@@ -449,15 +519,26 @@ export const ChatPage = ({
         selectedModel
       ) as { text: string; tokensConsumed: number };
 
-      await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {
+      const charMsgData = {
         chatId: selectedChar.id,
-        sender: 'character',
+        sender: 'character' as const,
         text: aiResponse.text,
         timestamp: serverTimestamp(),
         tokensConsumed: aiResponse.tokensConsumed
-      });
+      };
+
+      await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
 
       setIsOffline(false);
+
+      // Trigger background summarization check
+      // We pass the current messages + the new user message and the AI response
+      const updatedMessages: Message[] = [
+        ...messages, 
+        { id: 'temp-user', text: userMsg, sender: 'user', timestamp: new Date() },
+        { id: 'temp-ai', text: aiResponse.text, sender: 'character', timestamp: new Date() }
+      ];
+      checkAndSummarize(selectedChar, updatedMessages);
     } catch (error: any) {
       console.error("Gemini Error:", error);
       setIsOffline(true);

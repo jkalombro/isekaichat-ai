@@ -65,10 +65,18 @@ service cloud.firestore {
              data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.source is string && data.source.size() > 0 && data.source.size() < 100 &&
-             data.profile is string && data.profile.size() > 0 && data.profile.size() < 5000 &&
+             data.profile is string && data.profile.size() > 0 && data.profile.size() < 10000 &&
              (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() < 1000)) &&
              (!('totalTokensConsumed' in data) || data.totalTokensConsumed is number) &&
-             (!('lastCalculationDatetime' in data) || data.lastCalculationDatetime is timestamp);
+             (!('lastCalculationDatetime' in data) || data.lastCalculationDatetime is timestamp) &&
+             (!('memories' in data) || data.memories is string) &&
+             (!('lastSummarizedIndex' in data) || data.lastSummarizedIndex is number);
+    }
+
+    function isValidSummaryToken(data) {
+      return data.keys().hasAll(['tokensConsumed', 'dateTimeSummarized']) &&
+             data.tokensConsumed is number &&
+             data.dateTimeSummarized is timestamp;
     }
 
     function isValidMessage(data) {
@@ -109,10 +117,11 @@ service cloud.firestore {
     }
 
     match /characters/{characterId} {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
       allow create: if isAuthenticated() && isValidCharacter(request.resource.data);
       allow update: if (isCharOwner(resource.data) || isAdmin() || 
-                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'totalTokensConsumed', 'lastCalculationDatetime']))) && 
+                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'totalTokensConsumed', 'lastCalculationDatetime', 'memories', 'lastSummarizedIndex']))) && 
                     isValidCharacter(request.resource.data) &&
                     request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if isCharOwner(resource.data) || isAdmin();
@@ -125,6 +134,10 @@ service cloud.firestore {
                       resource.data.sender == 'user' &&
                       request.resource.data.sender == 'user';
         allow delete: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
+      }
+
+      match /summarytokens/{tokenId} {
+        allow read, create: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
       }
     }
   }

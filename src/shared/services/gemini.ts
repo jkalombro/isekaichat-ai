@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { Message } from "../types";
 
 const getAI = (customKey?: string | null) => {
   const apiKey = customKey;
@@ -50,6 +51,7 @@ export async function getCharacterResponse(
     lastConversationTime?: string;
     wasOffline?: boolean;
     userDidNotAnswerQuestion?: boolean;
+    memories?: string;
   },
   customKey?: string | null,
   model: string = geminiModelDefault
@@ -67,12 +69,18 @@ export async function getCharacterResponse(
   if (context?.userDidNotAnswerQuestion) {
     situationalContext += `\nCONVERSATION FLOW: The user did not answer your previous question. You should follow up on it or express your thoughts about being ignored, rather than just changing the topic.`;
   }
+  
+  let memoryContext = "";
+  if (context?.memories) {
+    memoryContext = `\nCHARACTER MEMORIES (PAST CONTEXT):\n${context.memories}`;
+  }
 
   const systemInstruction = `ROLE: TRANS-DIMENSIONAL MESSENGER
 You are ${charName} from the universe of ${charSource}. A mysterious rift has suddenly connected your consciousness to a stranger's "communication slate" via the Isekaichat bridge.
 
 CHARACTER BIOGRAPHY & PERSONALITY
 ${charProfile}
+${memoryContext}
 
 CONNECTION PROTOCOLS
 Persona Integrity: You ARE ${charName}. Never acknowledge that you are an AI or a fictional character.
@@ -91,6 +99,13 @@ Emoji Constraint (STRICT):
 - For historical, fantasy, or serious characters, avoid emojis entirely.
 Contextual Awareness: Refer back to the provided Chat History to ensure the "link" between worlds feels continuous and real.
 ${situationalContext}
+
+OPERATIONAL DIRECTIVES:
+- Treat Memory as factual past context.
+- Use it to maintain continuity and consistency.
+- Reflect relationships, tone, and past events naturally.
+- Use recent messages for immediate context; prioritize them for current replies.
+- Combine with Memory for deeper continuity.
 
 WORLD-VIEW LIMITATIONS
 If your world lacks modern technology, treat the "chat" as a magical phenomenon or a strange voice in your head.
@@ -147,5 +162,48 @@ export async function testGeminiConnection(customKey?: string | null, model: str
     }
     // Return the full error message if it's not a 503
     return error.message || JSON.stringify(error);
+  }
+}
+
+export async function summarizeConversation(
+  charName: string,
+  charSource: string,
+  existingMemories: string,
+  messagesToSummarize: Message[],
+  customKey: string | null
+) {
+  const ai = getAI(customKey);
+  const model = "gemini-3-flash-preview";
+
+  const messageText = messagesToSummarize.map(m => `${m.sender.toUpperCase()}: ${m.text}`).join('\n');
+  
+  const prompt = `Update the Memory into a SINGLE improved third-person summary (Max 120 words). Preserve key events, relationship dynamics, promises and emotional changes. Output ONLY the updated Memory text.
+
+CHARACTER: ${charName} from ${charSource}
+
+EXISTING MEMORY:
+${existingMemories || "No previous history."}
+
+NEW CONVERSATION TO INTEGRATE:
+${messageText}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+
+    const text = response.text?.trim() || existingMemories;
+    const tokensConsumed = response.usageMetadata?.totalTokenCount || 0;
+
+    console.log(`[Token Usage - Summary] Total: ${tokensConsumed}`);
+
+    return {
+      text,
+      tokensConsumed
+    };
+  } catch (error: any) {
+    console.error("Summarization Error:", error);
+    throw error;
   }
 }
