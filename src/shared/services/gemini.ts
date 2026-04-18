@@ -177,7 +177,7 @@ export async function summarizeConversation(
 
   const messageText = messagesToSummarize.map(m => `${m.sender.toUpperCase()}: ${m.text}`).join('\n');
   
-  const prompt = `Update the Memory into a SINGLE improved third-person summary (Max 120 words). Preserve key events, relationship dynamics, promises and emotional changes. Output ONLY the updated Memory text.
+  const prompt = `Update the Memory into a SINGLE improved third-person summary (Max 200 words). Preserve key events, relationship dynamics, promises and emotional changes. Output ONLY the updated Memory text.
 
 CHARACTER: ${charName} from ${charSource}
 

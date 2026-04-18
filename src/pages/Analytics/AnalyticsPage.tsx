@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, BarChart3, TrendingUp, Users, Zap, X, Loader2 } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
-import { Character, Message } from '@/shared/types';
+import { Character, Message, SummaryTokens } from '@/shared/types';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -20,7 +20,11 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedCharForGraph, setSelectedCharForGraph] = useState<Character | null>(null);
   const [charMessages, setCharMessages] = useState<any[]>([]);
+  const [charSummaryData, setCharSummaryData] = useState<any[]>([]);
+  const [activeGraphType, setActiveGraphType] = useState<'conversation' | 'summarization'>('conversation');
+  const [modalTotals, setModalTotals] = useState({ overall: 0, conversation: 0, summary: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFetchingData, setIsFetchingData] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -42,33 +46,66 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
     fetchStats();
   }, [user]);
 
-  const fetchCharMessages = async (char: Character) => {
+  const fetchCharData = async (char: Character) => {
+    setSelectedCharForGraph(char);
+    setIsModalOpen(true);
+    setIsFetchingData(true);
+    // Reset data for new character
+    setCharMessages([]);
+    setCharSummaryData([]);
+    setModalTotals({ overall: 0, conversation: 0, summary: 0 });
+    
     try {
-      const q = query(
-        collection(db, 'characters', char.id, 'messages'),
-        orderBy('timestamp', 'asc')
-      );
-      const snapshot = await getDocs(q);
-      const msgs = snapshot.docs.map(doc => doc.data() as Message);
-      
-      // Map each message with tokens to a data point
-      const chartData = msgs
-        .filter(msg => msg.tokensConsumed && msg.tokensConsumed > 0)
-        .map(msg => {
-          const date = msg.timestamp?.toDate() || new Date();
-          return {
-            label: date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-            tokens: msg.tokensConsumed,
-            fullDate: date.toLocaleString()
-          };
-        })
-        .slice(-20); // Show last 20 messages for readability
+      // Fetch Messages
+      const msgQ = query(collection(db, 'characters', char.id, 'messages'));
+      const msgSnapshot = await getDocs(msgQ);
+      let totalConversation = 0;
+      const conversationData = msgSnapshot.docs.map(doc => {
+        const data = doc.data() as Message;
+        const tokens = data.tokensConsumed || 0;
+        totalConversation += tokens;
+        const date = data.timestamp?.toDate() || new Date();
+        return {
+          label: date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          tokens: tokens,
+          timestamp: date.getTime()
+        };
+      })
+      .filter(d => d.tokens > 0)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-20);
 
-      setCharMessages(chartData);
-      setSelectedCharForGraph(char);
-      setIsModalOpen(true);
+      // Fetch Summaries
+      const sumQ = query(collection(db, 'characters', char.id, 'summarytokens'));
+      const sumSnapshot = await getDocs(sumQ);
+      let totalSummary = 0;
+      const summarizationData = sumSnapshot.docs.map(doc => {
+        const data = doc.data() as SummaryTokens;
+        const tokens = data.tokensConsumed || 0;
+        totalSummary += tokens;
+        const date = data.dateTimeSummarized?.toDate() || new Date();
+        return {
+          label: date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          tokens: tokens,
+          timestamp: date.getTime()
+        };
+      })
+      .filter(d => d.tokens > 0)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-20);
+
+      setCharMessages(conversationData);
+      setCharSummaryData(summarizationData);
+      setModalTotals({
+        overall: totalConversation + totalSummary,
+        conversation: totalConversation,
+        summary: totalSummary
+      });
+      setActiveGraphType('conversation');
     } catch (error) {
-      console.error("Error fetching char messages:", error);
+      console.error("Error fetching char data:", error);
+    } finally {
+      setIsFetchingData(false);
     }
   };
 
@@ -169,10 +206,15 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => fetchCharMessages(char)}
+                          onClick={() => fetchCharData(char)}
+                          disabled={isFetchingData}
                           className="h-8 w-8 rounded-lg hover:bg-orange-500/10 hover:text-orange-500 transition-all"
                         >
-                          <BarChart3 className="w-4 h-4" />
+                          {isFetchingData && selectedCharForGraph?.id === char.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <BarChart3 className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     </Card>
@@ -218,10 +260,39 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
               </div>
 
               <div className="p-8">
+                {/* Graph Toggle */}
+                <div className="flex bg-muted/50 p-1 rounded-xl mb-6 w-fit mx-auto border border-border">
+                  <button
+                    onClick={() => setActiveGraphType('conversation')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                      activeGraphType === 'conversation' 
+                        ? 'bg-primary text-primary-foreground shadow-lg' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    CONVERSATION
+                  </button>
+                  <button
+                    onClick={() => setActiveGraphType('summarization')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                      activeGraphType === 'summarization' 
+                        ? 'bg-primary text-primary-foreground shadow-lg' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    SUMMARIZATION
+                  </button>
+                </div>
+
                 <div className="h-[300px] w-full">
-                  {charMessages.length > 0 ? (
+                  {isFetchingData ? (
+                    <div className="h-full flex flex-col items-center justify-center space-y-4">
+                      <Loader2 className="w-12 h-12 animate-spin text-primary opacity-20" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Dimensional History</p>
+                    </div>
+                  ) : (activeGraphType === 'conversation' ? charMessages : charSummaryData).length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={charMessages}>
+                      <BarChart data={activeGraphType === 'conversation' ? charMessages : charSummaryData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(var(--border), 0.1)" />
                         <XAxis 
                           dataKey="label" 
@@ -244,11 +315,11 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                             fontSize: '12px',
                             fontWeight: 'bold'
                           }}
-                          formatter={(value: number) => [`${value.toLocaleString()} Tokens`, 'Consumption']}
+                          formatter={(value: number) => [`${value.toLocaleString()} Tokens`, activeGraphType === 'conversation' ? 'Conversation' : 'Summarization']}
                         />
                         <Bar dataKey="tokens" radius={[4, 4, 0, 0]}>
-                          {charMessages.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill="#f97316" fillOpacity={0.8} />
+                          {(activeGraphType === 'conversation' ? charMessages : charSummaryData).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={activeGraphType === 'conversation' ? "#f97316" : "#8b5cf6"} fillOpacity={0.8} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -256,19 +327,26 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
                       <BarChart3 className="w-12 h-12 opacity-10" />
-                      <p className="text-sm font-medium">Insufficient temporal data for visualization.</p>
+                      <p className="text-sm font-medium text-center">
+                        Insufficient {activeGraphType} data<br />
+                        <span className="text-[10px] opacity-50 uppercase tracking-widest">FOR_VISUALIZATION</span>
+                      </p>
                     </div>
                   )}
                 </div>
                 
-                <div className="mt-8 p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Total for Character</p>
-                    <p className="text-2xl font-black text-primary">{(selectedCharForGraph.totalTokensConsumed || 0).toLocaleString()}</p>
+                <div className="mt-8 p-6 bg-primary/5 rounded-3xl border border-primary/10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Overall Total</p>
+                    <p className="text-lg font-black text-primary truncate leading-none">{modalTotals.overall.toLocaleString()}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</p>
-                    <p className="text-sm font-bold text-foreground">LINK_ACTIVE</p>
+                  <div className="md:border-x border-y md:border-y-0 border-primary/10 md:px-6 py-6 md:py-0 space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Conversation</p>
+                    <p className="text-lg font-black truncate leading-none">{modalTotals.conversation.toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Summary</p>
+                    <p className="text-lg font-black truncate leading-none">{modalTotals.summary.toLocaleString()}</p>
                   </div>
                 </div>
               </div>

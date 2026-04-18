@@ -163,9 +163,9 @@ export const ChatPage = ({
     const lastSummaryIndex = character.lastSummarizedIndex || 0;
     const messagesSinceLastSummary = allMsgs.slice(lastSummaryIndex);
     
-    if (messagesSinceLastSummary.length >= 14) {
-      // Summarize everything EXCEPT the last 4 messages
-      const countToSummarize = messagesSinceLastSummary.length - 4;
+    if (messagesSinceLastSummary.length >= 16) {
+      // Summarize everything EXCEPT the last 6 messages
+      const countToSummarize = messagesSinceLastSummary.length - 6;
       const msgsToSummarize = messagesSinceLastSummary.slice(0, countToSummarize);
       
       try {

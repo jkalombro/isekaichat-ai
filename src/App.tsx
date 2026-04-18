@@ -54,6 +54,7 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
 
   const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
+  const isTester = user?.email === import.meta.env.VITE_TESTER_EMAIL;
 
   const handleLogin = async () => {
     try {
@@ -73,8 +74,8 @@ export default function App() {
     return <Splash />;
   }
 
-  // Maintenance Redirection Logic - Only if user is logged in and NOT an admin
-  if (appStatus?.isMaintenanceMode && user && !isAdmin) {
+  // Maintenance Redirection Logic - Only if user is logged in and NOT an admin or tester
+  if (appStatus?.isMaintenanceMode && user && !isAdmin && !isTester) {
     return <MaintenancePage status={appStatus} onLogout={handleLogout} />;
   }
 
