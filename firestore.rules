@@ -124,7 +124,7 @@ service cloud.firestore {
 
     match /characters/{characterId} {
       allow get: if isAuthenticated();
-      allow list: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isHardcodedAdmin());
+      allow list: if isAuthenticated();
       allow create: if isAuthenticated() && isValidCharacter(request.resource.data);
       allow update: if (isCharOwner(resource.data) || isAdmin() || 
                        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'totalTokensConsumed', 'lastCalculationDatetime', 'memories', 'lastSummarizedIndex']))) && 

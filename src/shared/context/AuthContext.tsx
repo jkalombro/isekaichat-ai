@@ -20,7 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null, 
   loading: true, 
   isAuthReady: false,
-  selectedModel: 'gemini-3.1-flash-lite-preview',
+  selectedModel: 'gemini-3-flash-preview',
   setSelectedModel: () => {},
   appStatus: null,
   loadingStatus: true
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<(User & { geminiKey?: string | null }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-3.1-flash-lite-preview');
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-3-flash-preview');
   const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
@@ -51,8 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Reset model to Lite on login
-        setSelectedModel('gemini-3.1-flash-lite-preview');
+        // Reset model to Flash on login for stability
+        setSelectedModel('gemini-3-flash-preview');
         
         // Sync user to Firestore
         const userRef = doc(db, 'users', firebaseUser.uid);

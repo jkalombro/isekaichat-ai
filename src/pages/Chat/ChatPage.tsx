@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { MessageCircle, Link2Off } from 'lucide-react';
+import { MessageCircle, Link2Off, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
@@ -63,6 +63,7 @@ export const ChatPage = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const prevSelectedCharRef = useRef<Character | null>(null);
@@ -125,6 +126,9 @@ export const ChatPage = ({
   const handleSelectChar = (char: Character | null) => {
     if (prevSelectedCharRef.current) {
       calculateTokensForCharacter(prevSelectedCharRef.current);
+    }
+    if (char && char.id !== selectedChar?.id) {
+      setIsLoadingMessages(true);
     }
     setSelectedChar(char);
     prevSelectedCharRef.current = char;
@@ -262,10 +266,15 @@ export const ChatPage = ({
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
         setMessages(msgs);
+        setIsLoadingMessages(false);
+      }, (error) => {
+        console.error("Messages Fetch Error:", error);
+        setIsLoadingMessages(false);
       });
       return () => unsubscribe();
     } else {
       setMessages([]);
+      setIsLoadingMessages(false);
     }
   }, [selectedChar, user]);
 
@@ -426,8 +435,8 @@ export const ChatPage = ({
       }
 
       const characterData: any = {
-        name: globalMatch?.name || charName, // Use the existing name if matched
-        source: globalMatch?.source || charSource, // Use existing source if matched
+        name: (charName.length > (globalMatch?.name?.length || 0)) ? charName : (globalMatch?.name || charName),
+        source: (charSource.length > (globalMatch?.source?.length || 0)) ? charSource : (globalMatch?.source || charSource),
         profile: profile.text,
         ownerId: user.uid,
         createdAt: serverTimestamp(),
@@ -583,30 +592,45 @@ export const ChatPage = ({
               setIsDeleting={setIsDeleting}
               handleFileChange={handleFileChange}
             />
-            <MessageList 
-              messages={messages}
-              selectedChar={selectedChar}
-              user={user}
-              isTyping={isTyping}
-              isOffline={isOffline}
-              scrollRef={scrollRef}
-              onEditMessage={(msg) => {
-                setEditingMessage(msg);
-                setNewMessage(msg.text);
-              }}
-            />
-            <MessageInput 
-              newMessage={newMessage}
-              setNewMessage={setNewMessage}
-              handleSendMessage={handleSendMessage}
-              selectedChar={selectedChar}
-              isTyping={isTyping}
-              isEditing={!!editingMessage}
-              onCancelEdit={() => {
-                setEditingMessage(null);
-                setNewMessage('');
-              }}
-            />
+            {isLoadingMessages ? (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+                  <Loader2 className="w-12 h-12 text-primary animate-spin relative z-10" />
+                </div>
+                <div className="space-y-1 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">Synchronizing Rift</p>
+                  <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Retrieving Dimensional Logs...</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <MessageList 
+                  messages={messages}
+                  selectedChar={selectedChar}
+                  user={user}
+                  isTyping={isTyping}
+                  isOffline={isOffline}
+                  scrollRef={scrollRef}
+                  onEditMessage={(msg) => {
+                    setEditingMessage(msg);
+                    setNewMessage(msg.text);
+                  }}
+                />
+                <MessageInput 
+                  newMessage={newMessage}
+                  setNewMessage={setNewMessage}
+                  handleSendMessage={handleSendMessage}
+                  selectedChar={selectedChar}
+                  isTyping={isTyping}
+                  isEditing={!!editingMessage}
+                  onCancelEdit={() => {
+                    setEditingMessage(null);
+                    setNewMessage('');
+                  }}
+                />
+              </>
+            )}
           </>
         ) : (
           <ChatHome 
