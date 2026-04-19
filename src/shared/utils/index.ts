@@ -19,6 +19,7 @@ export const formatTimestamp = (timestamp: any) => {
   return date.toLocaleString([], { 
     month: 'short', 
     day: 'numeric', 
+    year: 'numeric',
     hour: '2-digit', 
     minute: '2-digit' 
   });

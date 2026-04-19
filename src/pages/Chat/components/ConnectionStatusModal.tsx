@@ -57,7 +57,7 @@ export const ConnectionStatusModal = ({
                   Connection Status
                 </CardTitle>
                 
-                <div className="flex gap-6 items-center bg-muted/20 p-4 rounded-xl border border-border/50">
+                <div className="flex gap-6 items-start bg-muted/20 p-4 rounded-xl border border-border/50">
                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm bg-muted flex items-center justify-center">
                     {selectedChar.avatarUrl ? (
                       <img 
@@ -70,12 +70,13 @@ export const ConnectionStatusModal = ({
                       <span className="text-3xl font-black text-muted-foreground">{capitalize(selectedChar.name)[0]}</span>
                     )}
                    </div>
-                   <div className="flex flex-col gap-1 min-w-0">
-                      <h2 className="text-xl font-black tracking-tight leading-tight truncate">{capitalize(selectedChar.name)}</h2>
-                      <p className="text-xs font-bold text-primary tracking-widest opacity-80 truncate">{capitalize(selectedChar.source)}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] mt-1">
-                        Link established: <span className="text-foreground/80">{selectedChar.createdAt ? formatTimestamp(selectedChar.createdAt) : 'Unknown'}</span>
-                      </p>
+                   <div className="flex-1 min-w-0 py-1">
+                      <h2 className="text-xl font-black tracking-tight leading-tight break-words">{capitalize(selectedChar.name)}</h2>
+                      <p className="text-xs font-bold text-primary tracking-widest opacity-80 break-words mt-0.5">{capitalize(selectedChar.source)}</p>
+                      <div className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.1em] sm:tracking-[0.2em] mt-3 flex flex-col sm:flex-row sm:gap-1.5 leading-relaxed sm:leading-normal">
+                        <span>Link established:</span>
+                        <span className="text-foreground/80">{selectedChar.createdAt ? formatTimestamp(selectedChar.createdAt) : 'Unknown'}</span>
+                      </div>
                    </div>
                 </div>
               </CardHeader>
