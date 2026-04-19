@@ -4,6 +4,7 @@ import { ArrowLeft, Shield, TrendingUp, Users, Zap, X, BarChart3, Loader2 } from
 import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
 import { Character } from '@/shared/types';
+import { capitalize } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -229,11 +230,11 @@ export const AdminPage = ({ onBack }: AdminPageProps) => {
                         <div className="flex items-center gap-3 min-w-[180px]">
                           <Avatar className="h-8 w-8 border border-border">
                             <AvatarImage src={char.avatarUrl} />
-                            <AvatarFallback>{char.name[0]}</AvatarFallback>
+                            <AvatarFallback>{capitalize(char.name)[0]}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 text-left">
-                            <p className="text-sm font-bold truncate">{char.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate">{char.source}</p>
+                            <p className="text-sm font-bold truncate">{capitalize(char.name)}</p>
+                            <p className="text-[10px] text-muted-foreground tracking-widest truncate">{capitalize(char.source)}</p>
                           </div>
                         </div>
                         <div className="flex flex-row items-end gap-1.5 min-w-[100px] text-left md:text-right">

@@ -4,7 +4,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Character, Message } from '@/shared/types';
-import { formatTimestamp } from '@/shared/utils';
+import { formatTimestamp, capitalize } from '@/shared/utils';
 
 interface MessageListProps {
   messages: Message[];
@@ -46,8 +46,8 @@ export const MessageList = ({
     <ScrollArea className="flex-1 h-full min-h-0 p-6" viewportRef={scrollRef}>
       <div className="max-w-3xl mx-auto space-y-6 pb-4">
         <div className="text-center py-8">
-          <Badge variant="outline" className="text-[10px] uppercase tracking-tighter border-border text-muted-foreground px-3 py-1 rounded-full">
-            Dimensional link established with {selectedChar.name}
+          <Badge variant="outline" className="text-[10px] tracking-tighter border-border text-muted-foreground px-3 py-1 rounded-full">
+            Dimensional link established with {capitalize(selectedChar.name)}
           </Badge>
         </div>
 
@@ -66,7 +66,7 @@ export const MessageList = ({
             <Avatar className="h-8 w-8 shrink-0 border border-border mb-1">
               <AvatarImage src={msg.sender === 'user' ? user.photoURL || '' : selectedChar.avatarUrl} />
               <AvatarFallback className="text-[10px] bg-muted">
-                {msg.sender === 'user' ? (user.displayName?.[0] || 'U') : selectedChar.name[0]}
+                {msg.sender === 'user' ? (user.displayName?.[0] || 'U') : capitalize(selectedChar.name)[0]}
               </AvatarFallback>
             </Avatar>
             <div className={`max-w-[75%] space-y-1 ${msg.sender === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -88,7 +88,7 @@ export const MessageList = ({
           <div className="flex items-end gap-2">
             <Avatar className="h-8 w-8 shrink-0 border border-border mb-1">
               <AvatarImage src={selectedChar.avatarUrl} />
-              <AvatarFallback className="text-[10px] bg-muted">{selectedChar.name[0]}</AvatarFallback>
+              <AvatarFallback className="text-[10px] bg-muted">{capitalize(selectedChar.name)[0]}</AvatarFallback>
             </Avatar>
             <div className="bg-card border border-border rounded-2xl rounded-tl-none px-4 py-3 flex gap-1 shadow-sm">
               <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
@@ -104,8 +104,8 @@ export const MessageList = ({
             animate={{ opacity: 1 }}
             className="flex justify-center py-2"
           >
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-destructive/60 animate-pulse">
-              {selectedChar.name} went offline
+            <span className="text-[10px] font-black tracking-[0.2em] text-destructive/60 animate-pulse">
+              {capitalize(selectedChar.name)} went offline
             </span>
           </motion.div>
         )}

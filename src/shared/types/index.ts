@@ -9,6 +9,7 @@ export interface Character {
   lastCalculationDatetime?: any;
   memories?: string;
   lastSummarizedIndex?: number;
+  createdAt?: any;
 }
 
 export interface SummaryTokens {

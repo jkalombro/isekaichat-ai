@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
 import { Character, Message } from '@/shared/types';
-import { isSmartMatch } from '@/shared/utils';
+import { isSmartMatch, capitalize } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { Sidebar } from './components/Sidebar';
@@ -18,6 +18,7 @@ import { ResetModal } from './components/ResetModal';
 import { DeleteModal } from './components/DeleteModal';
 import { MaintenanceModal } from './components/MaintenanceModal';
 import { ManualModal } from './components/ManualModal';
+import { ConnectionStatusModal } from './components/ConnectionStatusModal';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { ChatHome } from './components/ChatHome';
 import { useAuth } from '@/shared/context/AuthContext';
@@ -50,10 +51,12 @@ export const ChatPage = ({
   const [charName, setCharName] = useState('');
   const [charSource, setCharSource] = useState('');
   const [isHarvesting, setIsHarvesting] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [typingCharId, setTypingCharId] = useState<string | null>(null);
+  const [offlineCharIds, setOfflineCharIds] = useState<Set<string>>(new Set());
   const [isResetting, setIsResetting] = useState(false);
   const [isResettingMemories, setIsResettingMemories] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConnectionStatusOpen, setIsConnectionStatusOpen] = useState(false);
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isSeveringLink, setIsSeveringLink] = useState(false);
@@ -62,7 +65,6 @@ export const ChatPage = ({
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -129,6 +131,7 @@ export const ChatPage = ({
     }
     if (char && char.id !== selectedChar?.id) {
       setIsLoadingMessages(true);
+      setTypingCharId(null);
     }
     setSelectedChar(char);
     prevSelectedCharRef.current = char;
@@ -283,7 +286,7 @@ export const ChatPage = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, typingCharId]);
 
   const handleResetConversation = async () => {
     if (resetConfirm !== 'forget about me' || !selectedChar || !user) return;
@@ -405,7 +408,7 @@ export const ChatPage = ({
         setCharName('');
         setCharSource('');
         setIsCreating(false);
-        toast.info(`You already have a link with ${existingInLocal.name}.`);
+        toast.info(`You already have a link with ${capitalize(existingInLocal.name)}.`);
         return;
       }
 
@@ -425,7 +428,7 @@ export const ChatPage = ({
       if (globalMatch) {
         profile = { text: globalMatch.profile, tokensConsumed: 0 };
         existingAvatar = globalMatch.avatarUrl;
-        toast.info(`Existing dimensional frequency found for ${globalMatch.name}. Syncing data...`);
+        toast.info(`Existing dimensional frequency found for ${capitalize(globalMatch.name)}. Syncing data...`);
       } else {
         profile = await harvestCharacterProfile(charName, charSource, user.geminiKey, selectedModel);
       }
@@ -453,11 +456,11 @@ export const ChatPage = ({
       setCharName('');
       setCharSource('');
       setIsCreating(false);
-      toast.success(`Connection established with ${characterData.name}!`);
+      toast.success(`Connection established with ${capitalize(characterData.name)}!`);
     } catch (error: any) {
       console.error("Link Error:", error);
       if (error.message === "CHARACTER_NOT_FOUND") {
-        toast.error(`Dimensional Rift Error: Could not find ${charName} in ${charSource}. Please verify the character exists.`);
+        toast.error(`Dimensional Rift Error: Could not find ${capitalize(charName)} in ${capitalize(charSource)}. Please verify the character exists.`);
       } else {
         toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
       }
@@ -499,8 +502,8 @@ export const ChatPage = ({
       });
 
       // Only show typing if we aren't currently "offline"
-      if (!isOffline) {
-        setIsTyping(true);
+      if (!offlineCharIds.has(selectedChar.id)) {
+        setTypingCharId(selectedChar.id);
       }
 
       // Filter history to only include messages after lastSummarizedIndex
@@ -519,7 +522,7 @@ export const ChatPage = ({
 
       const context = {
         lastConversationTime: lastCharMsg?.timestamp?.toDate?.()?.toISOString() || lastCharMsg?.timestamp?.toString(),
-        wasOffline: isOffline,
+        wasOffline: offlineCharIds.has(selectedChar.id),
         userDidNotAnswerQuestion: userDidNotAnswerQuestion,
         memories: selectedChar.memories
       };
@@ -545,7 +548,11 @@ export const ChatPage = ({
 
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
 
-      setIsOffline(false);
+      setOfflineCharIds(prev => {
+        const next = new Set(prev);
+        next.delete(selectedChar.id);
+        return next;
+      });
 
       // Trigger background summarization check
       // We pass the current messages + the new user message and the AI response
@@ -557,10 +564,10 @@ export const ChatPage = ({
       checkAndSummarize(selectedChar, updatedMessages);
     } catch (error: any) {
       console.error("Gemini Error:", error);
-      setIsOffline(true);
+      setOfflineCharIds(prev => new Set(prev).add(selectedChar.id));
       // No toast or character reply on Gemini error as per request
     } finally {
-      setIsTyping(false);
+      setTypingCharId(null);
     }
   };
 
@@ -588,8 +595,7 @@ export const ChatPage = ({
             <ChatHeader 
               selectedChar={selectedChar}
               setIsSidebarOpen={setIsSidebarOpen}
-              setIsResetting={setIsResetting}
-              setIsDeleting={setIsDeleting}
+              setIsConnectionStatusOpen={setIsConnectionStatusOpen}
               handleFileChange={handleFileChange}
             />
             {isLoadingMessages ? (
@@ -609,8 +615,8 @@ export const ChatPage = ({
                   messages={messages}
                   selectedChar={selectedChar}
                   user={user}
-                  isTyping={isTyping}
-                  isOffline={isOffline}
+                  isTyping={typingCharId === selectedChar.id}
+                  isOffline={offlineCharIds.has(selectedChar.id)}
                   scrollRef={scrollRef}
                   onEditMessage={(msg) => {
                     setEditingMessage(msg);
@@ -622,7 +628,7 @@ export const ChatPage = ({
                   setNewMessage={setNewMessage}
                   handleSendMessage={handleSendMessage}
                   selectedChar={selectedChar}
-                  isTyping={isTyping}
+                  isTyping={typingCharId === selectedChar.id}
                   isEditing={!!editingMessage}
                   onCancelEdit={() => {
                     setEditingMessage(null);
@@ -681,6 +687,14 @@ export const ChatPage = ({
       <ManualModal 
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
+      />
+
+      <ConnectionStatusModal 
+        isOpen={isConnectionStatusOpen}
+        onClose={() => setIsConnectionStatusOpen(false)}
+        selectedChar={selectedChar}
+        onOpenReset={() => setIsResetting(true)}
+        onOpenSever={() => setIsDeleting(true)}
       />
 
       <ProcessingOverlay 

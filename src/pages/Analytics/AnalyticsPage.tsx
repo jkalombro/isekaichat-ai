@@ -4,6 +4,7 @@ import { ArrowLeft, BarChart3, TrendingUp, Users, Zap, X, Loader2 } from 'lucide
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
 import { Character, Message, SummaryTokens } from '@/shared/types';
+import { capitalize } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -188,15 +189,15 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                         <div className="relative shrink-0">
                           <Avatar className="h-10 w-10 border border-border">
                             <AvatarImage src={char.avatarUrl} />
-                            <AvatarFallback>{char.name[0]}</AvatarFallback>
+                            <AvatarFallback>{capitalize(char.name)[0]}</AvatarFallback>
                           </Avatar>
                           <div className="absolute -top-1 -left-1 w-4 h-4 bg-background border border-border rounded-full flex items-center justify-center text-[8px] font-bold">
                             {index + 1}
                           </div>
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-bold truncate text-sm">{char.name}</h4>
-                          <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest">{char.source}</p>
+                          <h4 className="font-bold truncate text-sm">{capitalize(char.name)}</h4>
+                          <p className="text-[10px] text-muted-foreground truncate tracking-widest">{capitalize(char.source)}</p>
                         </div>
                       </div>
                       
@@ -249,10 +250,10 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-10 w-10 border border-border">
                     <AvatarImage src={selectedCharForGraph.avatarUrl} />
-                    <AvatarFallback>{selectedCharForGraph.name[0]}</AvatarFallback>
+                    <AvatarFallback>{capitalize(selectedCharForGraph.name)[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-black uppercase tracking-tight">{selectedCharForGraph.name}</h3>
+                    <h3 className="font-black tracking-tight">{capitalize(selectedCharForGraph.name)}</h3>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Consumption History</p>
                   </div>
                 </div>

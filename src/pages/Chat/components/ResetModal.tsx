@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/shared/component
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Character } from '@/shared/types';
+import { capitalize } from '@/shared/utils';
 
 interface ResetModalProps {
   isResetting: boolean;
@@ -40,7 +41,7 @@ export const ResetModal = ({
                   Reset Link
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-base font-medium">
-                  This will permanently erase all shared memories with {selectedChar?.name}.
+                  This will permanently erase all shared memories with {capitalize(selectedChar?.name || "")}.
                 </CardDescription>
               </CardHeader>
               <div className="px-6 pb-10 space-y-6">
@@ -70,7 +71,7 @@ export const ResetModal = ({
                   <Button 
                     disabled={resetConfirm !== 'forget about me'}
                     onClick={handleResetConversation}
-                    className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-destructive/20"
+                    className="flex-1 bg-destructive hover:bg-destructive/90 text-white rounded-xl h-14 !min-h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-destructive/20"
                   >
                     Reset
                   </Button>

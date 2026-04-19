@@ -104,12 +104,12 @@ export const Sidebar = ({
                 <Avatar className="h-10 w-10 border border-border">
                   <AvatarImage src={char.avatarUrl} />
                   <AvatarFallback className="bg-muted text-muted-foreground">
-                    {char.name[0]}
+                    {capitalize(char.name)[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 overflow-hidden">
                   <p className={`font-medium truncate ${selectedChar?.id === char.id ? 'text-primary' : 'text-foreground'}`}>
-                    {char.name}
+                    {capitalize(char.name)}
                   </p>
                   <p className="text-xs text-muted-foreground truncate tracking-wider">{capitalize(char.source)}</p>
                 </div>

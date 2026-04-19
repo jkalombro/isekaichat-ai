@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Send, X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Character } from '@/shared/types';
+import { capitalize } from '@/shared/utils';
 
 interface MessageInputProps {
   newMessage: string;
@@ -73,7 +74,7 @@ export const MessageInput = ({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isEditing ? "Edit your message..." : `Send a message to ${selectedChar.name}...`}
+            placeholder={isEditing ? "Edit your message..." : `Send a message to ${capitalize(selectedChar.name)}...`}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}

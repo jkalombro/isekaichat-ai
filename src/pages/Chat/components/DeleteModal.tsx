@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/shared/component
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Character } from '@/shared/types';
+import { capitalize } from '@/shared/utils';
 
 interface DeleteModalProps {
   isDeleting: boolean;
@@ -40,7 +41,7 @@ export const DeleteModal = ({
                   Sever Link
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-base font-medium">
-                  This will permanently sever the dimensional connection with {selectedChar?.name}. All data will be lost.
+                  This will permanently sever the dimensional connection with {capitalize(selectedChar?.name || "")}. All data will be lost.
                 </CardDescription>
               </CardHeader>
               <div className="px-6 pb-10 space-y-6">
@@ -70,7 +71,7 @@ export const DeleteModal = ({
                   <Button 
                     disabled={deleteConfirm !== 'sever connection'}
                     onClick={handleDeleteConnection}
-                    className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-destructive/20"
+                    className="flex-1 bg-destructive hover:bg-destructive/90 text-white rounded-xl h-14 !min-h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-destructive/20"
                   >
                     Sever
                   </Button>
