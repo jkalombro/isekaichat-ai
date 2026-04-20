@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion } from 'motion/react';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -14,6 +14,8 @@ interface MessageListProps {
   isOffline: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
   onEditMessage: (msg: Message) => void;
+  onLoadMore: () => void;
+  hasMore: boolean;
 }
 
 export const MessageList = ({
@@ -23,9 +25,34 @@ export const MessageList = ({
   isTyping,
   isOffline,
   scrollRef,
-  onEditMessage
+  onEditMessage,
+  onLoadMore,
+  hasMore
 }: MessageListProps) => {
   const [longPressTimer, setLongPressTimer] = React.useState<NodeJS.Timeout | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const prevScrollHeightRef = useRef<number>(0);
+
+  // Handle scroll to trigger load more
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollTop === 0 && hasMore && !isLoadingMore) {
+      prevScrollHeightRef.current = target.scrollHeight;
+      setIsLoadingMore(true);
+      onLoadMore();
+    }
+  };
+
+  // Adjust scroll position after loading more
+  React.useEffect(() => {
+    if (isLoadingMore && scrollRef.current) {
+      const scrollDiff = scrollRef.current.scrollHeight - prevScrollHeightRef.current;
+      if (scrollDiff > 0) {
+        scrollRef.current.scrollTop = scrollDiff;
+        setIsLoadingMore(false);
+      }
+    }
+  }, [messages.length, isLoadingMore]);
 
   const handleTouchStart = (msg: Message) => {
     if (msg.sender !== 'user') return;
@@ -43,8 +70,17 @@ export const MessageList = ({
   };
 
   return (
-    <ScrollArea className="flex-1 h-full min-h-0 p-6" viewportRef={scrollRef}>
+    <ScrollArea 
+      className="flex-1 h-full min-h-0 p-6" 
+      viewportRef={scrollRef}
+      onScroll={handleScroll}
+    >
       <div className="max-w-3xl mx-auto space-y-6 pb-4">
+        {hasMore && (
+           <div className="flex justify-center py-4">
+             <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+           </div>
+        )}
         <div className="text-center py-8">
           <Badge variant="outline" className="text-[10px] tracking-tighter border-border text-muted-foreground px-3 py-1 rounded-full">
             Dimensional link established with {capitalize(selectedChar.name)}

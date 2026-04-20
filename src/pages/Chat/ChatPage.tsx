@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp, deleteDoc, limitToLast } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { MessageCircle, Link2Off, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -66,6 +66,8 @@ export const ChatPage = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [messageLimit, setMessageLimit] = useState(20);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const prevSelectedCharRef = useRef<Character | null>(null);
@@ -132,6 +134,8 @@ export const ChatPage = ({
     if (char && char.id !== selectedChar?.id) {
       setIsLoadingMessages(true);
       setTypingCharId(null);
+      setMessageLimit(20);
+      setHasMoreMessages(true);
     }
     setSelectedChar(char);
     prevSelectedCharRef.current = char;
@@ -262,14 +266,27 @@ export const ChatPage = ({
   // Fetch messages
   useEffect(() => {
     if (selectedChar && user) {
+      const messagesRef = collection(db, 'characters', selectedChar.id, 'messages');
+      
+      // Get total count once to know if there's more
+      const countQuery = query(messagesRef);
+      getDocs(countQuery).then(snapshot => {
+        setHasMoreMessages(snapshot.size > messageLimit);
+      });
+
       const q = query(
-        collection(db, 'characters', selectedChar.id, 'messages'),
-        orderBy('timestamp', 'asc')
+        messagesRef,
+        orderBy('timestamp', 'asc'),
+        limitToLast(messageLimit)
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
         setMessages(msgs);
         setIsLoadingMessages(false);
+        // Check if we reached the end
+        if (snapshot.size < messageLimit) {
+           setHasMoreMessages(false);
+        }
       }, (error) => {
         console.error("Messages Fetch Error:", error);
         setIsLoadingMessages(false);
@@ -279,12 +296,48 @@ export const ChatPage = ({
       setMessages([]);
       setIsLoadingMessages(false);
     }
-  }, [selectedChar, user]);
+  }, [selectedChar, user, messageLimit]);
+
+  const handleLoadMore = () => {
+    if (hasMoreMessages && !isLoadingMessages) {
+      setMessageLimit(prev => prev + 20);
+    }
+  };
+
+  const lastMessageIdRef = useRef<string | null>(null);
+
+  // Reset message ref when character changes
+  useEffect(() => {
+    lastMessageIdRef.current = null;
+  }, [selectedChar?.id]);
 
   // Scroll to bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      const isNewMessage = lastMessage.id !== lastMessageIdRef.current;
+      const wasAtBottom = scrollRef.current.scrollHeight - scrollRef.current.scrollTop <= scrollRef.current.clientHeight + 200;
+      const isUserMessage = lastMessage.sender === 'user';
+
+      // Scroll to bottom if:
+      // 1. It's a new message and user was already near bottom
+      // 2. It's the very first load for this character
+      // 3. The user just sent the message themselves
+      // 4. Character just started typing and we were at bottom
+      if (
+        (isNewMessage && (wasAtBottom || lastMessageIdRef.current === null || isUserMessage)) ||
+        (typingCharId && wasAtBottom)
+      ) {
+        // Use timeout to allow DOM to update and reflect new scrollHeight
+        const scrollElement = scrollRef.current;
+        setTimeout(() => {
+          scrollElement.scrollTop = scrollElement.scrollHeight;
+        }, 50);
+      }
+      
+      lastMessageIdRef.current = lastMessage.id;
+    } else if (scrollRef.current && messages.length === 0) {
+      lastMessageIdRef.current = null;
     }
   }, [messages, typingCharId]);
 
@@ -618,6 +671,8 @@ export const ChatPage = ({
                   isTyping={typingCharId === selectedChar.id}
                   isOffline={offlineCharIds.has(selectedChar.id)}
                   scrollRef={scrollRef}
+                  onLoadMore={handleLoadMore}
+                  hasMore={hasMoreMessages}
                   onEditMessage={(msg) => {
                     setEditingMessage(msg);
                     setNewMessage(msg.text);
