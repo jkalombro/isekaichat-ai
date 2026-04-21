@@ -13,6 +13,7 @@ interface MessageListProps {
   isTyping: boolean;
   isOffline: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
+  bottomRef: React.RefObject<HTMLDivElement>;
   onEditMessage: (msg: Message) => void;
   onLoadMore: () => void;
   hasMore: boolean;
@@ -25,6 +26,7 @@ export const MessageList = ({
   isTyping,
   isOffline,
   scrollRef,
+  bottomRef,
   onEditMessage,
   onLoadMore,
   hasMore
@@ -32,6 +34,41 @@ export const MessageList = ({
   const [longPressTimer, setLongPressTimer] = React.useState<NodeJS.Timeout | null>(null);
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const prevScrollHeightRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Use ResizeObserver to detect when message list grows (images load, text wraps, etc)
+  React.useEffect(() => {
+    if (!containerRef.current || !scrollRef.current) return;
+
+    const target = scrollRef.current;
+    
+    const scrollToBottom = () => {
+      target.scrollTop = target.scrollHeight;
+      if (bottomRef.current) {
+        bottomRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }
+    };
+
+    const observer = new ResizeObserver(() => {
+      if (!isLoadingMore) {
+        const isNearBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 300;
+        
+        // If we were near bottom, stay at bottom as content grows
+        if (isNearBottom) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(scrollToBottom);
+          });
+        }
+      }
+    });
+
+    observer.observe(containerRef.current);
+    
+    // Also scroll immediately when dependencies change
+    scrollToBottom();
+
+    return () => observer.disconnect();
+  }, [messages.length, isTyping, isLoadingMore]);
 
   // Handle scroll to trigger load more
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -75,7 +112,7 @@ export const MessageList = ({
       viewportRef={scrollRef}
       onScroll={handleScroll}
     >
-      <div className="max-w-3xl mx-auto space-y-6 pb-4">
+      <div ref={containerRef} className="max-w-3xl mx-auto space-y-6 pb-4">
         {hasMore && (
            <div className="flex justify-center py-4">
              <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -145,6 +182,7 @@ export const MessageList = ({
             </span>
           </motion.div>
         )}
+        <div ref={bottomRef} className="h-4" />
       </div>
     </ScrollArea>
   );

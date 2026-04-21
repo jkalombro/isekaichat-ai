@@ -73,6 +73,7 @@ export const ChatPage = ({
   const prevSelectedCharRef = useRef<Character | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const calculateTokensForCharacter = async (character: Character) => {
     if (!user) return;
@@ -310,36 +311,6 @@ export const ChatPage = ({
   useEffect(() => {
     lastMessageIdRef.current = null;
   }, [selectedChar?.id]);
-
-  // Scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      const isNewMessage = lastMessage.id !== lastMessageIdRef.current;
-      const wasAtBottom = scrollRef.current.scrollHeight - scrollRef.current.scrollTop <= scrollRef.current.clientHeight + 200;
-      const isUserMessage = lastMessage.sender === 'user';
-
-      // Scroll to bottom if:
-      // 1. It's a new message and user was already near bottom
-      // 2. It's the very first load for this character
-      // 3. The user just sent the message themselves
-      // 4. Character just started typing and we were at bottom
-      if (
-        (isNewMessage && (wasAtBottom || lastMessageIdRef.current === null || isUserMessage)) ||
-        (typingCharId && wasAtBottom)
-      ) {
-        // Use timeout to allow DOM to update and reflect new scrollHeight
-        const scrollElement = scrollRef.current;
-        setTimeout(() => {
-          scrollElement.scrollTop = scrollElement.scrollHeight;
-        }, 50);
-      }
-      
-      lastMessageIdRef.current = lastMessage.id;
-    } else if (scrollRef.current && messages.length === 0) {
-      lastMessageIdRef.current = null;
-    }
-  }, [messages, typingCharId]);
 
   const handleResetConversation = async () => {
     if (resetConfirm !== 'forget about me' || !selectedChar || !user) return;
@@ -671,6 +642,7 @@ export const ChatPage = ({
                   isTyping={typingCharId === selectedChar.id}
                   isOffline={offlineCharIds.has(selectedChar.id)}
                   scrollRef={scrollRef}
+                  bottomRef={bottomRef}
                   onLoadMore={handleLoadMore}
                   hasMore={hasMoreMessages}
                   onEditMessage={(msg) => {
