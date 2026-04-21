@@ -178,7 +178,7 @@ export const MessageList = ({
             className="flex justify-center py-2"
           >
             <span className="text-[10px] font-black tracking-[0.2em] text-red-500/60 animate-pulse uppercase">
-              {capitalize(selectedChar.name)} went offline
+              {capitalize(selectedChar.name)} is offline
             </span>
           </motion.div>
         )}

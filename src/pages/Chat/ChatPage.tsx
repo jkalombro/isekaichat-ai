@@ -366,8 +366,8 @@ export const ChatPage = ({
 
       trackMessageSent(selectedChar.id);
 
-      // Only 'online' characters reply
-      if (charStatus !== 'online') {
+      // Only 'online' or 'unstable' characters reply
+      if (charStatus !== 'online' && charStatus !== 'unstable') {
         return;
       }
 
