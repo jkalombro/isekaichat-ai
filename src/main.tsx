@@ -4,12 +4,15 @@ import App from './App.tsx';
 import './index.css';
 import { AuthProvider } from './shared/context/AuthContext';
 import { ThemeProvider } from './shared/context/ThemeContext';
+import { ChatProvider } from './shared/context/ChatContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <App />
+        <ChatProvider>
+          <App />
+        </ChatProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,

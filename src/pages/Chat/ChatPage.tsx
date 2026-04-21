@@ -5,7 +5,6 @@ import { Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { getCharacterResponse, testGeminiConnection } from '@/shared/services/gemini';
-import { useCharacterStatus } from '@/shared/hooks/useCharacterStatus';
 import { Character, Message, CharacterStatus, StatusRecord } from '@/shared/types';
 import { capitalize } from '@/shared/utils';
 import { Sidebar } from './components/Sidebar';
@@ -15,6 +14,7 @@ import { MessageInput } from './components/MessageInput';
 import { ModalManager } from './components/ModalManager';
 import { ChatHome } from './components/ChatHome';
 import { useAuth } from '@/shared/context/AuthContext';
+import { useChatStore } from '@/shared/context/ChatContext';
 import { calculateTokensForCharacter, checkAndSummarize } from './utils/chatUtils';
 
 interface ChatPageProps {
@@ -37,15 +37,22 @@ export const ChatPage = ({
   onShowAdmin
 }: ChatPageProps) => {
   const { selectedModel } = useAuth();
-  const [characters, setCharacters] = useState<Character[]>([]);
+  const { 
+    characters, setCharacters,
+    selectedCharId, setSelectedCharId,
+    messagesByChar, isSyncing,
+    statuses, unreads,
+    ensureSync, trackMessageSent,
+    incrementUnread, updateStatus,
+    setUnstable
+  } = useChatStore();
+
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [typingCharId, setTypingCharId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [messageLimit, setMessageLimit] = useState(20);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
@@ -55,31 +62,25 @@ export const ChatPage = ({
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const currentCharIdRef = useRef<string | null>(selectedChar?.id || null);
+  const currentCharIdRef = useRef<string | null>(selectedCharId);
 
   useEffect(() => {
-    currentCharIdRef.current = selectedChar?.id || null;
-  }, [selectedChar?.id]);
+    currentCharIdRef.current = selectedCharId;
+  }, [selectedCharId]);
 
-  const { 
-    statuses, 
-    unreads, 
-    trackMessageSent, 
-    setUnstable, 
-    incrementUnread,
-    updateStatus
-  } = useCharacterStatus(characters, selectedChar?.id || null);
+  const messages = selectedCharId ? messagesByChar[selectedCharId] || [] : [];
+  const isLoadingMessages = selectedCharId ? isSyncing[selectedCharId] : false;
 
   const handleSelectChar = (char: Character | null) => {
     if (prevSelectedCharRef.current) {
       calculateTokensForCharacter(prevSelectedCharRef.current, user);
     }
-    if (char && char.id !== selectedChar?.id) {
-      setIsLoadingMessages(true);
+    if (char && char.id !== selectedCharId) {
       setTypingCharId(null);
       setMessageLimit(20);
       setHasMoreMessages(true);
     }
+    setSelectedCharId(char?.id || null);
     setSelectedChar(char);
     prevSelectedCharRef.current = char;
   };
@@ -118,21 +119,16 @@ export const ChatPage = ({
     try {
       setTypingCharId(char.id);
       
-      // Fetch fresh history for this character
-      const msgQ = query(
-        collection(db, 'characters', char.id, 'messages'),
-        orderBy('timestamp', 'desc'),
-        limit(15)
-      );
-      const snapshot = await getDocs(msgQ);
-      const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)).reverse();
+      // Use Store to get/fetch messages
+      const fetchedMessages = await ensureSync(char.id);
       
       if (fetchedMessages.length === 0) return;
 
       const lastMsg = fetchedMessages[fetchedMessages.length - 1];
       if (lastMsg.sender !== 'user') return; 
 
-      const history = fetchedMessages.slice(0, -1).map(m => ({
+      const lastSummaryIndex = char.lastSummarizedIndex || 0;
+      const history = fetchedMessages.slice(lastSummaryIndex, -1).map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.text }]
       }));
@@ -175,13 +171,11 @@ export const ChatPage = ({
       handleIncomingReply(char.id, aiResponse.text, aiResponse.tokensConsumed);
       
       // Check for summarization after delayed reply
-      const updatedMessages = [...fetchedMessages, { 
-        id: 'delayed-reply', 
-        text: aiResponse.text, 
-        sender: 'character', 
-        timestamp: new Date() 
-      } as Message];
-      checkAndSummarize(char, updatedMessages, user);
+      // Note: triggerDelayedReply might happen in background, messages state might be stale
+      // but onSnapshot will update it. For safety we can pass current messages from closure
+      // or just trust the next turn. 
+      // User said they want to pass messages to checkAndSummarize.
+      checkAndSummarize(char, [...fetchedMessages, charMsgData as any], user);
       
     } catch (error) {
       console.error("Delayed Reply Error:", error);
@@ -233,50 +227,23 @@ export const ChatPage = ({
     }
   }, [user, isAuthReady]);
 
-  // Sync selected character
+  // Fetch messages
+  // This is now handled by the ChatContext auto-syncing when selectedCharId changes
+  // We just sync local selectedChar state with the characters list from store
   useEffect(() => {
-    if (selectedChar) {
-      const updatedChar = characters.find(c => c.id === selectedChar.id);
+    if (selectedCharId) {
+      const updatedChar = characters.find(c => c.id === selectedCharId);
       if (updatedChar && JSON.stringify(updatedChar) !== JSON.stringify(selectedChar)) {
         setSelectedChar(updatedChar);
       }
-    }
-  }, [characters, selectedChar]);
-
-  // Fetch messages
-  useEffect(() => {
-    if (selectedChar && user) {
-      const messagesRef = collection(db, 'characters', selectedChar.id, 'messages');
-      
-      // Get total count once to know if there's more
-      const countQuery = query(messagesRef);
-      getDocs(countQuery).then(snapshot => {
-        setHasMoreMessages(snapshot.size > messageLimit);
-      });
-
-      const q = query(
-        messagesRef,
-        orderBy('timestamp', 'asc'),
-        limitToLast(messageLimit)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-        setMessages(msgs);
-        setIsLoadingMessages(false);
-        // Check if we reached the end
-        if (snapshot.size < messageLimit) {
-           setHasMoreMessages(false);
-        }
-      }, (error) => {
-        console.error("Messages Fetch Error:", error);
-        setIsLoadingMessages(false);
-      });
-      return () => unsubscribe();
     } else {
-      setMessages([]);
-      setIsLoadingMessages(false);
+      setSelectedChar(null);
     }
-  }, [selectedChar, user, messageLimit]);
+  }, [characters, selectedCharId, selectedChar]);
+
+  useEffect(() => {
+    setHasMoreMessages(messages.length > messageLimit);
+  }, [messages.length, messageLimit]);
 
   const handleLoadMore = () => {
     if (hasMoreMessages && !isLoadingMessages) {
@@ -426,22 +393,10 @@ export const ChatPage = ({
         updateStatus(selectedChar.id, { status: 'online', lastUpdate: Date.now() });
       }
       
-      // Increment unread if user switched away while waiting
-      if (selectedChar?.id && prevSelectedCharRef.current?.id !== selectedChar.id) {
-          // This logic is slightly flawed because selectedChar might have changed already in the closure
-          // But since this is a functional component, we check current selectedChar vs when we started.
-          // Better way is to compare with selectedChar.id at the end of the async op.
-      }
-      
-      // We'll use a ref or closure check below
+      // Notify about incoming reply (handles unread if user switched away)
       handleIncomingReply(selectedChar.id, aiResponse.text, aiResponse.tokensConsumed);
 
-      const updatedMessages: Message[] = [
-        ...messages, 
-        { id: 'temp-user', text: userMsg, sender: 'user', timestamp: new Date() },
-        { id: 'temp-ai', text: aiResponse.text, sender: 'character', timestamp: new Date() }
-      ];
-      checkAndSummarize(selectedChar, updatedMessages, user);
+      checkAndSummarize(selectedChar, [...messages, charMsgData as any], user);
     } catch (error: any) {
       console.error("Gemini Error:", error);
       if (error.message?.includes('503') || error.message?.includes('overloaded') || error.message?.includes('Service Unavailable')) {
@@ -501,8 +456,6 @@ export const ChatPage = ({
         onShowAnalytics={handleShowAnalyticsWithCalc}
         onShowAdmin={handleShowAdminWithCalc}
         onShowMaintenance={() => modalControls.setIsMaintenanceModalOpen?.(true)}
-        statuses={statuses}
-        unreads={unreads}
       />
 
       <main className="flex-1 flex flex-col relative bg-background overflow-hidden">
@@ -529,7 +482,7 @@ export const ChatPage = ({
             ) : (
               <>
                 <MessageList 
-                  messages={messages}
+                  messages={messages.slice(-messageLimit)}
                   selectedChar={selectedChar}
                   user={user}
                   isTyping={typingCharId === selectedChar.id}

@@ -5,8 +5,9 @@ import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { AppLogo } from '@/shared/components/AppLogo';
-import { Character, LocalStatusMap, UnreadMap } from '@/shared/types';
+import { Character } from '@/shared/types';
 import { capitalize } from '@/shared/utils';
+import { useChatStore } from '@/shared/context/ChatContext';
 
 interface SidebarProps {
   characters: Character[];
@@ -22,8 +23,6 @@ interface SidebarProps {
   onShowAnalytics: () => void;
   onShowAdmin: () => void;
   onShowMaintenance: () => void;
-  statuses: LocalStatusMap;
-  unreads: UnreadMap;
 }
 
 export const Sidebar = ({
@@ -40,9 +39,8 @@ export const Sidebar = ({
   onShowAnalytics,
   onShowAdmin,
   onShowMaintenance,
-  statuses,
-  unreads
 }: SidebarProps) => {
+  const { statuses, unreads } = useChatStore();
   return (
     <>
       {/* Sidebar Overlay (Mobile) */}

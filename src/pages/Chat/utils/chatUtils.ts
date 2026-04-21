@@ -6,7 +6,9 @@ import {
   doc, 
   updateDoc, 
   serverTimestamp, 
-  addDoc 
+  addDoc,
+  orderBy,
+  increment 
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase';
 import { Character, Message } from '@/shared/types';
@@ -60,7 +62,7 @@ export const calculateTokensForCharacter = async (character: Character, user: an
     if (newTokens > 0 || !lastCalc) {
       const charRef = doc(db, 'characters', character.id);
       await updateDoc(charRef, {
-        totalTokensConsumed: (character.totalTokensConsumed || 0) + newTokens,
+        totalTokensConsumed: increment(newTokens),
         lastCalculationDatetime: serverTimestamp()
       });
     }
@@ -73,17 +75,18 @@ export const calculateTokensForCharacter = async (character: Character, user: an
  * Checks if a conversation needs to be summarized based on the number of new messages.
  * If so, it invokes the summarization service and updates the character's memory.
  */
-export const checkAndSummarize = async (character: Character, allMsgs: Message[], user: any) => {
+export const checkAndSummarize = async (character: Character, fullMsgs: Message[], user: any) => {
   if (!user) return;
-  const lastSummaryIndex = character.lastSummarizedIndex || 0;
-  const messagesSinceLastSummary = allMsgs.slice(lastSummaryIndex);
   
-  if (messagesSinceLastSummary.length >= 16) {
-    // Summarize everything EXCEPT the last 6 messages
-    const countToSummarize = messagesSinceLastSummary.length - 6;
-    const msgsToSummarize = messagesSinceLastSummary.slice(0, countToSummarize);
+  try {
+    const lastSummaryIndex = character.lastSummarizedIndex || 0;
+    const messagesSinceLastSummary = fullMsgs.slice(lastSummaryIndex);
     
-    try {
+    if (messagesSinceLastSummary.length >= 16) {
+      // Summarize everything EXCEPT the last 6 messages
+      const countToSummarize = messagesSinceLastSummary.length - 6;
+      const msgsToSummarize = messagesSinceLastSummary.slice(0, countToSummarize);
+      
       const result = await summarizeConversation(
         character.name,
         character.source,
@@ -107,9 +110,9 @@ export const checkAndSummarize = async (character: Character, allMsgs: Message[]
         dateTimeSummarized: serverTimestamp()
       });
       
-      console.log(`[Summary Sync] Memory updated and ${result.tokensConsumed} tokens recorded.`);
-    } catch (error) {
-      console.error("Background Summarization Error:", error);
+      console.log(`[Summary Sync] Memory updated and ${result.tokensConsumed} tokens recorded at index ${newIndex}.`);
     }
+  } catch (error) {
+    console.error("Background Summarization Error:", error);
   }
 };

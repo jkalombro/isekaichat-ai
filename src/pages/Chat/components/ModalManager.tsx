@@ -5,6 +5,7 @@ import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile } from '@/shared/services/gemini';
 import { Character } from '@/shared/types';
 import { isSmartMatch, capitalize } from '@/shared/utils';
+import { useChatStore } from '@/shared/context/ChatContext';
 
 import { CreateModal } from './modals/CreateModal';
 import { ResetModal } from './modals/ResetModal';
@@ -35,6 +36,7 @@ export const ModalManager = ({
   isUploading,
   onModalStateChange
 }: ModalManagerProps) => {
+  const { setSelectedCharId } = useChatStore();
   // Modal Visibility States
   const [isCreating, setIsCreating] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -75,6 +77,7 @@ export const ModalManager = ({
       );
 
       if (existingInLocal) {
+        setSelectedCharId(existingInLocal.id);
         setSelectedChar(existingInLocal);
         setCharName('');
         setCharSource('');
@@ -184,6 +187,7 @@ export const ModalManager = ({
       
       setDeleteConfirm('');
       setIsDeleting(false);
+      setSelectedCharId(null);
       setSelectedChar(null);
       toast.success("Dimensional link severed.");
     } catch (error: any) {
