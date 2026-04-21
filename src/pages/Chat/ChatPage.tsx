@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
-import { getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
+import { getCharacterResponse, testGeminiConnection } from '@/shared/services/gemini';
 import { useCharacterStatus } from '@/shared/hooks/useCharacterStatus';
 import { Character, Message, CharacterStatus, StatusRecord } from '@/shared/types';
 import { capitalize } from '@/shared/utils';
@@ -15,6 +15,7 @@ import { MessageInput } from './components/MessageInput';
 import { ModalManager } from './components/ModalManager';
 import { ChatHome } from './components/ChatHome';
 import { useAuth } from '@/shared/context/AuthContext';
+import { calculateTokensForCharacter, checkAndSummarize } from './utils/chatUtils';
 
 interface ChatPageProps {
   user: any;
@@ -69,62 +70,9 @@ export const ChatPage = ({
     updateStatus
   } = useCharacterStatus(characters, selectedChar?.id || null);
 
-  const calculateTokensForCharacter = async (character: Character) => {
-    if (!user) return;
-    
-    try {
-      const lastCalc = character.lastCalculationDatetime;
-      
-      // Query messages tokens
-      let msgQ;
-      if (lastCalc) {
-        msgQ = query(
-          collection(db, 'characters', character.id, 'messages'),
-          where('timestamp', '>', lastCalc)
-        );
-      } else {
-        msgQ = query(collection(db, 'characters', character.id, 'messages'));
-      }
-
-      const msgSnapshot = await getDocs(msgQ);
-      let newTokens = 0;
-      msgSnapshot.docs.forEach(doc => {
-        const data = doc.data() as Message;
-        newTokens += (data.tokensConsumed || 0);
-      });
-
-      // Query summary tokens
-      let sumQ;
-      if (lastCalc) {
-        sumQ = query(
-          collection(db, 'characters', character.id, 'summarytokens'),
-          where('dateTimeSummarized', '>', lastCalc)
-        );
-      } else {
-        sumQ = query(collection(db, 'characters', character.id, 'summarytokens'));
-      }
-
-      const sumSnapshot = await getDocs(sumQ);
-      sumSnapshot.docs.forEach(doc => {
-        const data = doc.data() as { tokensConsumed: number };
-        newTokens += (data.tokensConsumed || 0);
-      });
-
-      if (newTokens > 0 || !lastCalc) {
-        const charRef = doc(db, 'characters', character.id);
-        await updateDoc(charRef, {
-          totalTokensConsumed: (character.totalTokensConsumed || 0) + newTokens,
-          lastCalculationDatetime: serverTimestamp()
-        });
-      }
-    } catch (error) {
-      console.error("Token Calculation Error:", error);
-    }
-  };
-
   const handleSelectChar = (char: Character | null) => {
     if (prevSelectedCharRef.current) {
-      calculateTokensForCharacter(prevSelectedCharRef.current);
+      calculateTokensForCharacter(prevSelectedCharRef.current, user);
     }
     if (char && char.id !== selectedChar?.id) {
       setIsLoadingMessages(true);
@@ -138,71 +86,30 @@ export const ChatPage = ({
 
   const handleLogoutWithCalc = () => {
     if (selectedChar) {
-      calculateTokensForCharacter(selectedChar);
+      calculateTokensForCharacter(selectedChar, user);
     }
     onLogout();
   };
 
   const handleShowAnalyticsWithCalc = () => {
     if (selectedChar) {
-      calculateTokensForCharacter(selectedChar);
+      calculateTokensForCharacter(selectedChar, user);
     }
     onShowAnalytics();
   };
 
   const handleShowDisclaimerWithCalc = () => {
     if (selectedChar) {
-      calculateTokensForCharacter(selectedChar);
+      calculateTokensForCharacter(selectedChar, user);
     }
     onShowDisclaimer();
   };
 
   const handleShowAdminWithCalc = () => {
     if (selectedChar) {
-      calculateTokensForCharacter(selectedChar);
+      calculateTokensForCharacter(selectedChar, user);
     }
     onShowAdmin();
-  };
-
-  const checkAndSummarize = async (character: Character, allMsgs: Message[]) => {
-    if (!user) return;
-    const lastSummaryIndex = character.lastSummarizedIndex || 0;
-    const messagesSinceLastSummary = allMsgs.slice(lastSummaryIndex);
-    
-    if (messagesSinceLastSummary.length >= 16) {
-      // Summarize everything EXCEPT the last 6 messages
-      const countToSummarize = messagesSinceLastSummary.length - 6;
-      const msgsToSummarize = messagesSinceLastSummary.slice(0, countToSummarize);
-      
-      try {
-        const result = await summarizeConversation(
-          character.name,
-          character.source,
-          character.memories || "",
-          msgsToSummarize,
-          user.geminiKey
-        );
-        
-        // Update character with new memories and new index
-        const charRef = doc(db, 'characters', character.id);
-        const newIndex = lastSummaryIndex + countToSummarize;
-        
-        await updateDoc(charRef, {
-          memories: result.text,
-          lastSummarizedIndex: newIndex
-        });
-        
-        // Record tokens consumed
-        await addDoc(collection(db, 'characters', character.id, 'summarytokens'), {
-          tokensConsumed: result.tokensConsumed,
-          dateTimeSummarized: serverTimestamp()
-        });
-        
-        console.log(`[Summary Sync] Memory updated and ${result.tokensConsumed} tokens recorded.`);
-      } catch (error) {
-        console.error("Background Summarization Error:", error);
-      }
-    }
   };
 
   const triggerDelayedReply = async (char: Character) => {
@@ -257,6 +164,7 @@ export const ChatPage = ({
       };
 
       await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
+      setTypingCharId(null);
       handleIncomingReply(char.id, aiResponse.text, aiResponse.tokensConsumed);
       
       // Check for summarization after delayed reply
@@ -266,7 +174,7 @@ export const ChatPage = ({
         sender: 'character', 
         timestamp: new Date() 
       } as Message];
-      checkAndSummarize(char, updatedMessages);
+      checkAndSummarize(char, updatedMessages, user);
       
     } catch (error) {
       console.error("Delayed Reply Error:", error);
@@ -504,6 +412,7 @@ export const ChatPage = ({
       };
 
       const docRef = await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
+      setTypingCharId(null);
       
       // Increment unread if user switched away while waiting
       if (selectedChar?.id && prevSelectedCharRef.current?.id !== selectedChar.id) {
@@ -520,7 +429,7 @@ export const ChatPage = ({
         { id: 'temp-user', text: userMsg, sender: 'user', timestamp: new Date() },
         { id: 'temp-ai', text: aiResponse.text, sender: 'character', timestamp: new Date() }
       ];
-      checkAndSummarize(selectedChar, updatedMessages);
+      checkAndSummarize(selectedChar, updatedMessages, user);
     } catch (error: any) {
       console.error("Gemini Error:", error);
       if (error.message?.includes('503') || error.message?.includes('overloaded') || error.message?.includes('Service Unavailable')) {
@@ -529,9 +438,7 @@ export const ChatPage = ({
         updateStatus(selectedChar.id, { status: 'offline', lastUpdate: Date.now() });
       }
     } finally {
-      if (typingCharId === selectedChar.id) {
-        setTypingCharId(null);
-      }
+      setTypingCharId(null);
     }
   };
 
