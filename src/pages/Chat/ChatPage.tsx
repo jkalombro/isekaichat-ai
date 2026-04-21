@@ -5,7 +5,8 @@ import { MessageCircle, Link2Off, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
 import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
-import { Character, Message } from '@/shared/types';
+import { useCharacterStatus } from '@/shared/hooks/useCharacterStatus';
+import { Character, Message, CharacterStatus, StatusRecord } from '@/shared/types';
 import { isSmartMatch, capitalize } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
 import { AppLogo } from '@/shared/components/AppLogo';
@@ -52,7 +53,6 @@ export const ChatPage = ({
   const [charSource, setCharSource] = useState('');
   const [isHarvesting, setIsHarvesting] = useState(false);
   const [typingCharId, setTypingCharId] = useState<string | null>(null);
-  const [offlineCharIds, setOfflineCharIds] = useState<Set<string>>(new Set());
   const [isResetting, setIsResetting] = useState(false);
   const [isResettingMemories, setIsResettingMemories] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -74,6 +74,20 @@ export const ChatPage = ({
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const currentCharIdRef = useRef<string | null>(selectedChar?.id || null);
+
+  useEffect(() => {
+    currentCharIdRef.current = selectedChar?.id || null;
+  }, [selectedChar?.id]);
+
+  const { 
+    statuses, 
+    unreads, 
+    trackMessageSent, 
+    setUnstable, 
+    incrementUnread,
+    updateStatus
+  } = useCharacterStatus(characters, selectedChar?.id || null);
 
   const calculateTokensForCharacter = async (character: Character) => {
     if (!user) return;
@@ -208,6 +222,76 @@ export const ChatPage = ({
       } catch (error) {
         console.error("Background Summarization Error:", error);
       }
+    }
+  };
+
+  const triggerDelayedReply = async (char: Character) => {
+    if (!user) return;
+
+    try {
+      setTypingCharId(char.id);
+      
+      // Fetch fresh history for this character
+      const msgQ = query(
+        collection(db, 'characters', char.id, 'messages'),
+        orderBy('timestamp', 'desc'),
+        limit(15)
+      );
+      const snapshot = await getDocs(msgQ);
+      const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)).reverse();
+      
+      if (fetchedMessages.length === 0) return;
+
+      const lastMsg = fetchedMessages[fetchedMessages.length - 1];
+      if (lastMsg.sender !== 'user') return; 
+
+      const history = fetchedMessages.slice(0, -1).map(m => ({
+        role: m.sender === 'user' ? 'user' as const : 'model' as const,
+        parts: [{ text: m.text }]
+      }));
+
+      const context = {
+        lastConversationTime: lastMsg.timestamp?.toDate?.()?.toISOString() || lastMsg.timestamp?.toString(),
+        wasOffline: true,
+        userDidNotAnswerQuestion: false,
+        memories: char.memories
+      };
+
+      const aiResponse = await getCharacterResponse(
+        char.name,
+        char.source,
+        char.profile,
+        history,
+        lastMsg.text,
+        context,
+        user.geminiKey,
+        selectedModel
+      ) as { text: string; tokensConsumed: number };
+
+      const charMsgData = {
+        chatId: char.id,
+        sender: 'character' as const,
+        text: aiResponse.text,
+        timestamp: serverTimestamp(),
+        tokensConsumed: aiResponse.tokensConsumed
+      };
+
+      await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
+      handleIncomingReply(char.id, aiResponse.text, aiResponse.tokensConsumed);
+      
+      // Check for summarization after delayed reply
+      const updatedMessages = [...fetchedMessages, { 
+        id: 'delayed-reply', 
+        text: aiResponse.text, 
+        sender: 'character', 
+        timestamp: new Date() 
+      } as Message];
+      checkAndSummarize(char, updatedMessages);
+      
+    } catch (error) {
+      console.error("Delayed Reply Error:", error);
+    } finally {
+      setTypingCharId(null);
     }
   };
 
@@ -505,7 +589,7 @@ export const ChatPage = ({
         const msgRef = doc(db, 'characters', selectedChar.id, 'messages', editingMessage.id);
         await updateDoc(msgRef, {
           text: userMsg,
-          isEdited: true, // Optional: track if edited
+          isEdited: true,
         });
         setEditingMessage(null);
         toast.success("Message updated.");
@@ -516,6 +600,8 @@ export const ChatPage = ({
       return;
     }
 
+    const charStatus = statuses[selectedChar.id]?.status;
+
     try {
       await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), {
         chatId: selectedChar.id,
@@ -525,19 +611,21 @@ export const ChatPage = ({
         tokensConsumed: 0,
       });
 
-      // Only show typing if we aren't currently "offline"
-      if (!offlineCharIds.has(selectedChar.id)) {
-        setTypingCharId(selectedChar.id);
+      trackMessageSent(selectedChar.id);
+
+      // Only 'online' characters reply
+      if (charStatus !== 'online') {
+        return;
       }
 
-      // Filter history to only include messages after lastSummarizedIndex
+      setTypingCharId(selectedChar.id);
+
       const lastSummaryIndex = selectedChar.lastSummarizedIndex || 0;
       const history = messages.slice(lastSummaryIndex).map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.text }]
       }));
 
-      // Determine context
       const lastCharMsg = [...messages].reverse().find(m => m.sender === 'character');
       const lastUserMsgBeforeThis = [...messages].reverse().find(m => m.sender === 'user');
       
@@ -546,7 +634,7 @@ export const ChatPage = ({
 
       const context = {
         lastConversationTime: lastCharMsg?.timestamp?.toDate?.()?.toISOString() || lastCharMsg?.timestamp?.toString(),
-        wasOffline: offlineCharIds.has(selectedChar.id),
+        wasOffline: charStatus === 'offline',
         userDidNotAnswerQuestion: userDidNotAnswerQuestion,
         memories: selectedChar.memories
       };
@@ -570,16 +658,18 @@ export const ChatPage = ({
         tokensConsumed: aiResponse.tokensConsumed
       };
 
-      await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
+      const docRef = await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
+      
+      // Increment unread if user switched away while waiting
+      if (selectedChar?.id && prevSelectedCharRef.current?.id !== selectedChar.id) {
+          // This logic is slightly flawed because selectedChar might have changed already in the closure
+          // But since this is a functional component, we check current selectedChar vs when we started.
+          // Better way is to compare with selectedChar.id at the end of the async op.
+      }
+      
+      // We'll use a ref or closure check below
+      handleIncomingReply(selectedChar.id, aiResponse.text, aiResponse.tokensConsumed);
 
-      setOfflineCharIds(prev => {
-        const next = new Set(prev);
-        next.delete(selectedChar.id);
-        return next;
-      });
-
-      // Trigger background summarization check
-      // We pass the current messages + the new user message and the AI response
       const updatedMessages: Message[] = [
         ...messages, 
         { id: 'temp-user', text: userMsg, sender: 'user', timestamp: new Date() },
@@ -588,12 +678,48 @@ export const ChatPage = ({
       checkAndSummarize(selectedChar, updatedMessages);
     } catch (error: any) {
       console.error("Gemini Error:", error);
-      setOfflineCharIds(prev => new Set(prev).add(selectedChar.id));
-      // No toast or character reply on Gemini error as per request
+      if (error.message?.includes('503') || error.message?.includes('overloaded') || error.message?.includes('Service Unavailable')) {
+        setUnstable(selectedChar.id);
+      } else {
+        updateStatus(selectedChar.id, { status: 'offline', lastUpdate: Date.now() });
+      }
     } finally {
-      setTypingCharId(null);
+      if (typingCharId === selectedChar.id) {
+        setTypingCharId(null);
+      }
     }
   };
+
+  const handleIncomingReply = (charId: string, text: string, tokens: number) => {
+    // If user switched away during the async call, increment unread for that character
+    if (currentCharIdRef.current !== charId) {
+      incrementUnread(charId);
+      toast.info(`New message from ${capitalize(characters.find(c => c.id === charId)?.name || 'character')}`);
+    }
+  };
+
+  // Trigger delayed replies when characters return to online
+  useEffect(() => {
+    const checkDelayedReplies = async () => {
+      if (!user) return;
+      
+      const pendingChars = (Object.entries(statuses) as [string, StatusRecord][]).filter(
+        ([_, record]) => record.status === 'online' && record.messagedWhileOffline
+      );
+
+      for (const [charId, _] of pendingChars) {
+        const char = characters.find(c => c.id === charId);
+        if (char) {
+          // Immediately clear the flag to prevent duplicate triggers
+          updateStatus(charId, { messagedWhileOffline: false });
+          
+          // Small delay before reply to feel natural
+          setTimeout(() => triggerDelayedReply(char), 3000);
+        }
+      }
+    };
+    checkDelayedReplies();
+  }, [statuses, characters, user]);
 
   return (
     <div className="h-screen bg-background text-foreground flex overflow-hidden">
@@ -611,6 +737,8 @@ export const ChatPage = ({
         onShowAnalytics={handleShowAnalyticsWithCalc}
         onShowAdmin={handleShowAdminWithCalc}
         onShowMaintenance={() => setIsMaintenanceModalOpen(true)}
+        statuses={statuses}
+        unreads={unreads}
       />
 
       <main className="flex-1 flex flex-col relative bg-background overflow-hidden">
@@ -621,6 +749,7 @@ export const ChatPage = ({
               setIsSidebarOpen={setIsSidebarOpen}
               setIsConnectionStatusOpen={setIsConnectionStatusOpen}
               handleFileChange={handleFileChange}
+              status={statuses[selectedChar.id]?.status || 'online'}
             />
             {isLoadingMessages ? (
               <div className="flex-1 flex flex-col items-center justify-center space-y-4">
@@ -640,7 +769,7 @@ export const ChatPage = ({
                   selectedChar={selectedChar}
                   user={user}
                   isTyping={typingCharId === selectedChar.id}
-                  isOffline={offlineCharIds.has(selectedChar.id)}
+                  status={statuses[selectedChar.id]?.status || 'online'}
                   scrollRef={scrollRef}
                   bottomRef={bottomRef}
                   onLoadMore={handleLoadMore}

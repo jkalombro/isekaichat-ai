@@ -1,3 +1,20 @@
+export type CharacterStatus = 'online' | 'offline' | 'unstable';
+
+export interface StatusRecord {
+  status: CharacterStatus;
+  lastUpdate: number;
+  lastMessageSent?: number;
+  messagedWhileOffline?: boolean;
+}
+
+export interface LocalStatusMap {
+  [characterId: string]: StatusRecord;
+}
+
+export interface UnreadMap {
+  [characterId: string]: number;
+}
+
 export interface Character {
   id: string;
   name: string;

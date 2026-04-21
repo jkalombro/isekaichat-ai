@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Character, Message } from '@/shared/types';
+import { Character, Message, CharacterStatus } from '@/shared/types';
 import { formatTimestamp, capitalize } from '@/shared/utils';
 
 interface MessageListProps {
@@ -11,7 +11,7 @@ interface MessageListProps {
   selectedChar: Character;
   user: any;
   isTyping: boolean;
-  isOffline: boolean;
+  status: CharacterStatus;
   scrollRef: React.RefObject<HTMLDivElement>;
   bottomRef: React.RefObject<HTMLDivElement>;
   onEditMessage: (msg: Message) => void;
@@ -24,7 +24,7 @@ export const MessageList = ({
   selectedChar,
   user,
   isTyping,
-  isOffline,
+  status,
   scrollRef,
   bottomRef,
   onEditMessage,
@@ -171,14 +171,26 @@ export const MessageList = ({
           </div>
         )}
 
-        {isOffline && (
+        {status === 'offline' && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex justify-center py-2"
           >
-            <span className="text-[10px] font-black tracking-[0.2em] text-destructive/60 animate-pulse">
+            <span className="text-[10px] font-black tracking-[0.2em] text-red-500/60 animate-pulse uppercase">
               {capitalize(selectedChar.name)} went offline
+            </span>
+          </motion.div>
+        )}
+
+        {status === 'unstable' && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex justify-center py-2"
+          >
+            <span className="text-[10px] font-black tracking-[0.2em] text-orange-500 animate-pulse uppercase">
+              Link to {capitalize(selectedChar.name)} is Unstable
             </span>
           </motion.div>
         )}

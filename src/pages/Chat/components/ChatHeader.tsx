@@ -2,7 +2,7 @@ import React from 'react';
 import { Menu, Camera, Handshake } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Character } from '@/shared/types';
+import { Character, CharacterStatus } from '@/shared/types';
 import { capitalize } from '@/shared/utils';
 
 interface ChatHeaderProps {
@@ -10,13 +10,15 @@ interface ChatHeaderProps {
   setIsSidebarOpen: (open: boolean) => void;
   setIsConnectionStatusOpen: (open: boolean) => void;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  status: CharacterStatus;
 }
 
 export const ChatHeader = ({
   selectedChar,
   setIsSidebarOpen,
   setIsConnectionStatusOpen,
-  handleFileChange
+  handleFileChange,
+  status
 }: ChatHeaderProps) => {
   return (
     <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-md z-10">
@@ -29,6 +31,12 @@ export const ChatHeader = ({
             <AvatarImage src={selectedChar.avatarUrl} />
             <AvatarFallback className="bg-muted">{capitalize(selectedChar.name)[0]}</AvatarFallback>
           </Avatar>
+          {/* Status Dot */}
+          <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-background rounded-full shadow-sm z-10 ${
+            status === 'online' ? 'bg-green-500' : 
+            status === 'offline' ? 'bg-red-500' : 
+            'bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]'
+          }`} />
           <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
             <Camera className="w-4 h-4 text-white" />
           </div>
@@ -41,7 +49,12 @@ export const ChatHeader = ({
           />
         </div>
         <div>
-          <h3 className="font-semibold text-sm">{capitalize(selectedChar.name)}</h3>
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            {capitalize(selectedChar.name)}
+            {status === 'unstable' && (
+              <span className="text-[8px] font-black uppercase text-orange-500 tracking-widest animate-pulse">Unstable</span>
+            )}
+          </h3>
           <p className="text-[10px] text-muted-foreground tracking-widest">{capitalize(selectedChar.source)}</p>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { AppLogo } from '@/shared/components/AppLogo';
-import { Character } from '@/shared/types';
+import { Character, LocalStatusMap, UnreadMap } from '@/shared/types';
 import { capitalize } from '@/shared/utils';
 
 interface SidebarProps {
@@ -22,6 +22,8 @@ interface SidebarProps {
   onShowAnalytics: () => void;
   onShowAdmin: () => void;
   onShowMaintenance: () => void;
+  statuses: LocalStatusMap;
+  unreads: UnreadMap;
 }
 
 export const Sidebar = ({
@@ -37,7 +39,9 @@ export const Sidebar = ({
   onShowDisclaimer,
   onShowAnalytics,
   onShowAdmin,
-  onShowMaintenance
+  onShowMaintenance,
+  statuses,
+  unreads
 }: SidebarProps) => {
   return (
     <>
@@ -88,33 +92,52 @@ export const Sidebar = ({
 
         <ScrollArea className="flex-1 min-h-0 px-4">
           <div className="space-y-2 py-4">
-            {characters.map((char) => (
-              <button
-                key={char.id}
-                onClick={() => {
-                  onSelectChar(char);
-                  setIsSidebarOpen(false);
-                }}
-                className={`w-full p-4 rounded-2xl text-left transition-all flex items-center gap-3 group border ${
-                  selectedChar?.id === char.id 
-                    ? 'bg-primary/10 border-primary/30 shadow-sm' 
-                    : 'hover:bg-sidebar-accent border-transparent'
-                }`}
-              >
-                <Avatar className="h-10 w-10 border border-border">
-                  <AvatarImage src={char.avatarUrl} />
-                  <AvatarFallback className="bg-muted text-muted-foreground">
-                    {capitalize(char.name)[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                  <p className={`font-medium truncate ${selectedChar?.id === char.id ? 'text-primary' : 'text-foreground'}`}>
-                    {capitalize(char.name)}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate tracking-wider">{capitalize(char.source)}</p>
-                </div>
-              </button>
-            ))}
+            {characters.map((char) => {
+              const status = statuses[char.id]?.status || 'online';
+              const unreadCount = unreads[char.id] || 0;
+              
+              return (
+                <button
+                  key={char.id}
+                  onClick={() => {
+                    onSelectChar(char);
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full p-4 rounded-2xl text-left transition-all flex items-center gap-3 group border relative ${
+                    selectedChar?.id === char.id 
+                      ? 'bg-primary/10 border-primary/30 shadow-sm' 
+                      : 'hover:bg-sidebar-accent border-transparent'
+                  }`}
+                >
+                  <div className="relative">
+                    <Avatar className="h-10 w-10 border border-border">
+                      <AvatarImage src={char.avatarUrl} />
+                      <AvatarFallback className="bg-muted text-muted-foreground">
+                        {capitalize(char.name)[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    {/* Status Dot */}
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-sidebar rounded-full shadow-sm z-10 ${
+                      status === 'online' ? 'bg-green-500' : 
+                      status === 'offline' ? 'bg-red-500' : 
+                      'bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]'
+                    }`} />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className={`font-medium truncate ${selectedChar?.id === char.id ? 'text-primary' : 'text-foreground'}`}>
+                      {capitalize(char.name)}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate tracking-wider">{capitalize(char.source)}</p>
+                  </div>
+                  {/* Unread Badge */}
+                  {unreadCount > 0 && (
+                    <span className="bg-primary text-primary-foreground text-[10px] font-bold h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
             {characters.length === 0 && (
               <div className="text-center py-12 space-y-4">
                 <div className="p-4 bg-muted/50 rounded-3xl inline-block">
