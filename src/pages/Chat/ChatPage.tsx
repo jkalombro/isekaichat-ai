@@ -165,6 +165,13 @@ export const ChatPage = ({
 
       await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
       setTypingCharId(null);
+
+      // Reset to online if they were unstable/returning
+      const currentStatus = statuses[char.id]?.status;
+      if (currentStatus === 'unstable') {
+        updateStatus(char.id, { status: 'online', lastUpdate: Date.now() });
+      }
+
       handleIncomingReply(char.id, aiResponse.text, aiResponse.tokensConsumed);
       
       // Check for summarization after delayed reply
@@ -413,6 +420,11 @@ export const ChatPage = ({
 
       const docRef = await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
       setTypingCharId(null);
+
+      // If they were unstable and successfully replied, reset to online
+      if (charStatus === 'unstable') {
+        updateStatus(selectedChar.id, { status: 'online', lastUpdate: Date.now() });
+      }
       
       // Increment unread if user switched away while waiting
       if (selectedChar?.id && prevSelectedCharRef.current?.id !== selectedChar.id) {
