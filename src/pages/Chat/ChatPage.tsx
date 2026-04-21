@@ -1,26 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, writeBatch, updateDoc, doc, Timestamp, deleteDoc, limitToLast } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, where, limit, updateDoc, doc, Timestamp, limitToLast } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { MessageCircle, Link2Off, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '@/shared/services/firebase';
-import { harvestCharacterProfile, getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
+import { getCharacterResponse, testGeminiConnection, summarizeConversation } from '@/shared/services/gemini';
 import { useCharacterStatus } from '@/shared/hooks/useCharacterStatus';
 import { Character, Message, CharacterStatus, StatusRecord } from '@/shared/types';
-import { isSmartMatch, capitalize } from '@/shared/utils';
-import { Button } from '@/shared/components/ui/button';
-import { AppLogo } from '@/shared/components/AppLogo';
+import { capitalize } from '@/shared/utils';
 import { Sidebar } from './components/Sidebar';
 import { ChatHeader } from './components/ChatHeader';
 import { MessageList } from './components/MessageList';
 import { MessageInput } from './components/MessageInput';
-import { CreateModal } from './components/CreateModal';
-import { ResetModal } from './components/ResetModal';
-import { DeleteModal } from './components/DeleteModal';
-import { MaintenanceModal } from './components/MaintenanceModal';
-import { ManualModal } from './components/ManualModal';
-import { ConnectionStatusModal } from './components/ConnectionStatusModal';
-import { ProcessingOverlay } from './components/ProcessingOverlay';
+import { ModalManager } from './components/ModalManager';
 import { ChatHome } from './components/ChatHome';
 import { useAuth } from '@/shared/context/AuthContext';
 
@@ -48,21 +40,8 @@ export const ChatPage = ({
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [charName, setCharName] = useState('');
-  const [charSource, setCharSource] = useState('');
-  const [isHarvesting, setIsHarvesting] = useState(false);
   const [typingCharId, setTypingCharId] = useState<string | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
-  const [isResettingMemories, setIsResettingMemories] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isConnectionStatusOpen, setIsConnectionStatusOpen] = useState(false);
-  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
-  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [isSeveringLink, setIsSeveringLink] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [resetConfirm, setResetConfirm] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -70,6 +49,7 @@ export const ChatPage = ({
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [modalControls, setModalControls] = useState<any>({});
   const prevSelectedCharRef = useRef<Character | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -396,64 +376,6 @@ export const ChatPage = ({
     lastMessageIdRef.current = null;
   }, [selectedChar?.id]);
 
-  const handleResetConversation = async () => {
-    if (resetConfirm !== 'forget about me' || !selectedChar || !user) return;
-
-    setIsResettingMemories(true);
-    try {
-      const q = query(collection(db, 'characters', selectedChar.id, 'messages'));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      
-      // Clear memories and index too
-      const charRef = doc(db, 'characters', selectedChar.id);
-      batch.update(charRef, {
-        memories: "",
-        lastSummarizedIndex: 0
-      });
-
-      await batch.commit();
-      setResetConfirm('');
-      setIsResetting(false);
-      toast.success("Dimensional memory wiped.");
-    } catch (error: any) {
-      toast.error("Failed to reset conversation.");
-    } finally {
-      setIsResettingMemories(false);
-    }
-  };
-
-  const handleDeleteConnection = async () => {
-    if (deleteConfirm !== 'sever connection' || !selectedChar || !user) return;
-
-    setIsSeveringLink(true);
-    try {
-      // 1. Delete all messages first
-      const q = query(collection(db, 'characters', selectedChar.id, 'messages'));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-
-      // 2. Delete the character document
-      await deleteDoc(doc(db, 'characters', selectedChar.id));
-      
-      setDeleteConfirm('');
-      setIsDeleting(false);
-      setSelectedChar(null);
-      toast.success("Dimensional link severed.");
-    } catch (error: any) {
-      toast.error("Failed to sever connection.");
-    } finally {
-      setIsSeveringLink(false);
-    }
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -497,83 +419,6 @@ export const ChatPage = ({
     } finally {
       setIsUploading(false);
       if (e.target) e.target.value = '';
-    }
-  };
-
-  const handleCreateCharacter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!charName || !charSource || !user) return;
-
-    setIsHarvesting(true);
-    try {
-      // 1. Check if the CURRENT user already has this character (Smart Match)
-      const existingInLocal = characters.find(c => 
-        isSmartMatch(c.name, c.source, charName, charSource)
-      );
-
-      if (existingInLocal) {
-        setSelectedChar(existingInLocal);
-        setCharName('');
-        setCharSource('');
-        setIsCreating(false);
-        toast.info(`You already have a link with ${capitalize(existingInLocal.name)}.`);
-        return;
-      }
-
-      // 2. Check if ANY user has this character to reuse profile and avatar (Smart Match)
-      // We fetch all characters to ensure case-insensitivity and smart matching
-      const globalExistingSnapshot = await getDocs(collection(db, 'characters'));
-      const globalChars = globalExistingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Character));
-      
-      const globalMatch = globalChars.find(c => 
-        isSmartMatch(c.name, c.source, charName, charSource) && 
-        c.profile !== "CHARACTER_NOT_FOUND"
-      );
-      
-      let profile: any;
-      let existingAvatar: string | undefined;
-
-      if (globalMatch) {
-        profile = { text: globalMatch.profile, tokensConsumed: 0 };
-        existingAvatar = globalMatch.avatarUrl;
-        toast.info(`Existing dimensional frequency found for ${capitalize(globalMatch.name)}. Syncing data...`);
-      } else {
-        profile = await harvestCharacterProfile(charName, charSource, user.geminiKey, selectedModel);
-      }
-
-      if (!profile || !profile.text || profile.text.toUpperCase().includes("CHARACTER_NOT_FOUND")) {
-        throw new Error("CHARACTER_NOT_FOUND");
-      }
-
-      const characterData: any = {
-        name: (charName.length > (globalMatch?.name?.length || 0)) ? charName : (globalMatch?.name || charName),
-        source: (charSource.length > (globalMatch?.source?.length || 0)) ? charSource : (globalMatch?.source || charSource),
-        profile: profile.text,
-        ownerId: user.uid,
-        createdAt: serverTimestamp(),
-        totalTokensConsumed: profile.tokensConsumed,
-        lastCalculationDatetime: serverTimestamp()
-      };
-
-      if (existingAvatar) {
-        characterData.avatarUrl = existingAvatar;
-      }
-
-      await addDoc(collection(db, 'characters'), characterData);
-
-      setCharName('');
-      setCharSource('');
-      setIsCreating(false);
-      toast.success(`Connection established with ${capitalize(characterData.name)}!`);
-    } catch (error: any) {
-      console.error("Link Error:", error);
-      if (error.message === "CHARACTER_NOT_FOUND") {
-        toast.error(`Dimensional Rift Error: Could not find ${capitalize(charName)} in ${capitalize(charSource)}. Please verify the character exists.`);
-      } else {
-        toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
-      }
-    } finally {
-      setIsHarvesting(false);
     }
   };
 
@@ -729,14 +574,14 @@ export const ChatPage = ({
         onSelectChar={handleSelectChar}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        setIsCreating={setIsCreating}
+        setIsCreating={modalControls.setIsCreating}
         user={user}
         isAdmin={isAdmin}
         onLogout={handleLogoutWithCalc}
         onShowDisclaimer={handleShowDisclaimerWithCalc}
         onShowAnalytics={handleShowAnalyticsWithCalc}
         onShowAdmin={handleShowAdminWithCalc}
-        onShowMaintenance={() => setIsMaintenanceModalOpen(true)}
+        onShowMaintenance={() => modalControls.setIsMaintenanceModalOpen?.(true)}
         statuses={statuses}
         unreads={unreads}
       />
@@ -747,7 +592,7 @@ export const ChatPage = ({
             <ChatHeader 
               selectedChar={selectedChar}
               setIsSidebarOpen={setIsSidebarOpen}
-              setIsConnectionStatusOpen={setIsConnectionStatusOpen}
+              setIsConnectionStatusOpen={modalControls.setIsConnectionStatusOpen}
               handleFileChange={handleFileChange}
               status={statuses[selectedChar.id]?.status || 'online'}
             />
@@ -799,66 +644,22 @@ export const ChatPage = ({
             geminiStatus={geminiStatus}
             isTestingConnection={isTestingConnection}
             checkConnection={checkConnection}
-            setIsCreating={setIsCreating}
+            setIsCreating={modalControls.setIsCreating}
             setIsSidebarOpen={setIsSidebarOpen}
-            onOpenManual={() => setIsManualModalOpen(true)}
+            onOpenManual={() => modalControls.setIsManualModalOpen?.(true)}
           />
         )}
       </main>
 
-      <CreateModal 
-        isCreating={isCreating}
-        setIsCreating={setIsCreating}
-        charName={charName}
-        setCharName={setCharName}
-        charSource={charSource}
-        setCharSource={setCharSource}
-        handleCreateCharacter={handleCreateCharacter}
-        isHarvesting={isHarvesting}
-      />
-
-      <ResetModal 
-        isResetting={isResetting}
-        setIsResetting={setIsResetting}
+      <ModalManager 
+        user={user}
+        characters={characters}
         selectedChar={selectedChar}
-        resetConfirm={resetConfirm}
-        setResetConfirm={setResetConfirm}
-        handleResetConversation={handleResetConversation}
-      />
-
-      <DeleteModal 
-        isDeleting={isDeleting}
-        setIsDeleting={setIsDeleting}
-        selectedChar={selectedChar}
-        deleteConfirm={deleteConfirm}
-        setDeleteConfirm={setDeleteConfirm}
-        handleDeleteConnection={handleDeleteConnection}
-      />
-
-      <MaintenanceModal 
-        isOpen={isMaintenanceModalOpen}
-        onClose={() => setIsMaintenanceModalOpen(false)}
-      />
-
-      <ManualModal 
-        isOpen={isManualModalOpen}
-        onClose={() => setIsManualModalOpen(false)}
-      />
-
-      <ConnectionStatusModal 
-        isOpen={isConnectionStatusOpen}
-        onClose={() => setIsConnectionStatusOpen(false)}
-        selectedChar={selectedChar}
-        onOpenReset={() => setIsResetting(true)}
-        onOpenSever={() => setIsDeleting(true)}
-      />
-
-      <ProcessingOverlay 
-        isHarvesting={isHarvesting}
-        isResettingMemories={isResettingMemories}
+        setSelectedChar={setSelectedChar}
+        selectedModel={selectedModel}
+        isAdmin={isAdmin}
         isUploading={isUploading}
-        isLoggingIn={false}
-        isSeveringLink={isSeveringLink}
+        onModalStateChange={setModalControls}
       />
     </div>
   );

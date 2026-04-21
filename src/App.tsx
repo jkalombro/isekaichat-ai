@@ -12,7 +12,7 @@ import { AdminPage } from '@/pages/Admin/AdminPage';
 import { RiftKeyPage } from '@/pages/RiftKey/RiftKeyPage';
 import { MaintenancePage } from '@/pages/Maintenance/MaintenancePage';
 import { AppLogo } from '@/shared/components/AppLogo';
-import { ProcessingOverlay } from '@/pages/Chat/components/ProcessingOverlay';
+import { ProcessingOverlay } from '@/pages/Chat/components/modals/ProcessingOverlay';
 
 import { APP_VERSION } from '@/shared/constants';
 
