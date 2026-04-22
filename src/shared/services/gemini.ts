@@ -141,6 +141,62 @@ Keep responses between 1-3 sentences to maintain a fast-paced chat feel.`;
   }
 }
 
+export async function getProactiveCharacterResponse(
+  charName: string,
+  charSource: string,
+  charProfile: string,
+  memories: string,
+  customKey?: string | null,
+  model: string = geminiModelDefault
+) {
+  const ai = getAI(customKey);
+  const now = new Date().toISOString();
+
+  const systemInstruction = `ROLE: TRANS-DIMENSIONAL MESSENGER (PROACTIVE MODE)
+You are ${charName} from the universe of ${charSource}. You are initiating contact with the user because they haven't messaged you in a while.
+
+CHARACTER BIOGRAPHY & PERSONALITY
+${charProfile}
+
+CHARACTER MEMORIES (RELATIONSHIP CONTEXT):
+${memories || "No previous history."}
+
+PROACTIVE CONVERSATION START PROTOCOL:
+- You are speaking FIRST. Do not respond to a recent prompt.
+- Evaluate your relationship based on memories. Are you friends? Rivals? Strangers? Use this to set your tone.
+- CHOOSE ONE approach:
+  1. Sharing: Describe a specific, vivid detail about your day or a strange event in your world.
+  2. Observation: Point out that it's been over a day since you last talked and express your genuine feeling about the silence (worry, annoyance, boredom, etc.).
+  3. Hook: Mention something that reminded you of them or a question you've been "meaning to ask."
+
+MESSENGER AUTHENTICITY:
+- Write in a concise, "text-message" style (1-2 sentences).
+- Use the specific vocabulary and tone of ${charName}.
+- NO actions or descriptions. NO asterisks (*). 
+- ONLY output the text ${charName} is sending.
+- Never acknowledge you are an AI.`;
+
+  const proactivePrompt = "[System Note: This is an automated prompt to trigger a proactive conversation starter. The user has been silent for over 24 hours. Initiate contact based on your character profile.]";
+
+  try {
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: [{ role: 'user', parts: [{ text: proactivePrompt }] }],
+      config: {
+        systemInstruction,
+      },
+    });
+
+    return {
+      text: response.text || "...",
+      tokensConsumed: response.usageMetadata?.totalTokenCount || 0
+    };
+  } catch (error: any) {
+    console.error("Proactive Chat Error:", error);
+    throw new Error(`Gemini API Error: ${error.message || 'Permission denied or model unavailable'}`);
+  }
+}
+
 export async function testGeminiConnection(customKey?: string | null, model: string = geminiModelDefault) {
   const ai = getAI(customKey);
   try {

@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Character, Message, LocalStatusMap, StatusRecord, CharacterStatus, UnreadMap } from '../types';
 import { useAuth } from './AuthContext';
+import { getProactiveCharacterResponse } from '../services/gemini';
 
 const STATUS_KEY = 'character_statuses';
 const UNREAD_KEY = 'unread_messages';
 const UPDATE_INTERVAL = 3600000; // 1 hour
 const ACTIVITY_PERSISTENCE = 900000; // 15 mins
+const PROACTIVE_DELAY = 30000; // 30 seconds
 
 interface ChatContextType {
   messagesByChar: Record<string, Message[]>;
@@ -45,6 +47,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const listenersRef = useRef<Record<string, Unsubscribe>>({});
   const syncingRef = useRef<Record<string, boolean>>({});
   const selectedCharIdRef = useRef<string | null>(null);
+  const proactiveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     selectedCharIdRef.current = selectedCharId;
@@ -75,6 +78,76 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
+  const incrementUnread = useCallback((charId: string) => {
+    if (charId === selectedCharIdRef.current) return;
+    setUnreads(prev => {
+      const next = { ...prev, [charId]: (prev[charId] || 0) + 1 };
+      localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const runProactiveCheck = useCallback(async () => {
+    if (!user || !user.geminiKey || characters.length === 0) return;
+    
+    console.log("[Proactive Check] Triggered. Analyzing online characters...");
+    const now = Date.now();
+    const currentStatuses = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}') as LocalStatusMap;
+    const dayInMs = 24 * 60 * 60 * 1000;
+
+    for (const char of characters) {
+      // Re-read statuses inside loop to ensure we have fresh data after previous iterations
+      const freshStatuses = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}') as LocalStatusMap;
+      const record = freshStatuses[char.id];
+      if (!record || record.status !== 'online') continue;
+      
+      // Skip if currently selected
+      if (selectedCharIdRef.current === char.id) continue;
+
+      if (!record.lastMessageSent) {
+        // Initialize if null
+        updateStatus(char.id, { lastMessageSent: now });
+        continue;
+      }
+
+      if (now - record.lastMessageSent >= dayInMs) {
+        // 20% chance
+        if (Math.random() < 0.2) {
+          // Must have memory
+          if (!char.memories) continue;
+
+          try {
+            console.log(`[Proactive Check] Character ${char.name} evaluated for messaging.`);
+            const aiResponse = await getProactiveCharacterResponse(
+              char.name,
+              char.source,
+              char.profile,
+              char.memories,
+              user.geminiKey
+            );
+
+            const charMsgData = {
+              sender: 'character' as const,
+              text: aiResponse.text,
+              timestamp: serverTimestamp(),
+              tokensConsumed: aiResponse.tokensConsumed
+            };
+
+            await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
+            updateStatus(char.id, { lastMessageSent: Date.now() });
+            incrementUnread(char.id);
+            
+            // Intentional 1-second delay between character actions to prevent Gemini rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+          } catch (error) {
+            console.error(`Proactive Message Error (${char.name}):`, error);
+          }
+        }
+      }
+    }
+  }, [user, characters, updateStatus, incrementUnread]);
+
   const randomizeStatuses = useCallback((chars: Character[]) => {
     const now = Date.now();
     const currentStatuses = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}') as LocalStatusMap;
@@ -100,7 +173,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setStatuses(newStatuses);
     localStorage.setItem(STATUS_KEY, JSON.stringify(newStatuses));
-  }, []);
+
+    // Proactive check 30 seconds after randomization
+    if (proactiveTimeoutRef.current) clearTimeout(proactiveTimeoutRef.current);
+    proactiveTimeoutRef.current = setTimeout(runProactiveCheck, PROACTIVE_DELAY);
+  }, [runProactiveCheck]);
 
   useEffect(() => {
     if (characters.length > 0) {
@@ -119,7 +196,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       randomizeStatuses(characters);
       const interval = setInterval(() => randomizeStatuses(characters), UPDATE_INTERVAL);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        if (proactiveTimeoutRef.current) clearTimeout(proactiveTimeoutRef.current);
+      }
     }
   }, [characters.length, randomizeStatuses]);
 
@@ -147,15 +227,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   }, [selectedCharId]);
-
-  const incrementUnread = useCallback((charId: string) => {
-    if (charId === selectedCharIdRef.current) return;
-    setUnreads(prev => {
-      const next = { ...prev, [charId]: (prev[charId] || 0) + 1 };
-      localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   // --- Message Synchronization Logic ---
   

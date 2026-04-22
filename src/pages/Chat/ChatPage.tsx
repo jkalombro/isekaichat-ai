@@ -160,6 +160,7 @@ export const ChatPage = ({
 
       await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
       setTypingCharId(null);
+      trackMessageSent(char.id);
 
       // Reset to online if they were unstable/returning
       const currentStatus = statuses[char.id]?.status;
@@ -380,8 +381,9 @@ export const ChatPage = ({
         tokensConsumed: aiResponse.tokensConsumed
       };
 
-      const docRef = await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
+      await addDoc(collection(db, 'characters', selectedChar.id, 'messages'), charMsgData);
       setTypingCharId(null);
+      trackMessageSent(selectedChar.id);
 
       // If they were unstable and successfully replied, reset to online
       if (charStatus === 'unstable') {
