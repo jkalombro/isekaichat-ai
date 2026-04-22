@@ -54,7 +54,6 @@ export const ChatPage = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [messageLimit, setMessageLimit] = useState(20);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [geminiStatus, setGeminiStatus] = useState<'stable' | 'unstable' | 'closed'>('stable');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [modalControls, setModalControls] = useState<any>({});
@@ -70,6 +69,7 @@ export const ChatPage = ({
 
   const messages = selectedCharId ? messagesByChar[selectedCharId] || [] : [];
   const isLoadingMessages = selectedCharId ? isSyncing[selectedCharId] : false;
+  const hasMoreMessages = messages.length > messageLimit;
 
   const handleSelectChar = (char: Character | null) => {
     if (prevSelectedCharRef.current) {
@@ -78,7 +78,6 @@ export const ChatPage = ({
     if (char && char.id !== selectedCharId) {
       setTypingCharId(null);
       setMessageLimit(20);
-      setHasMoreMessages(true);
     }
     setSelectedCharId(char?.id || null);
     setSelectedChar(char);
@@ -240,10 +239,6 @@ export const ChatPage = ({
       setSelectedChar(null);
     }
   }, [characters, selectedCharId, selectedChar]);
-
-  useEffect(() => {
-    setHasMoreMessages(messages.length > messageLimit);
-  }, [messages.length, messageLimit]);
 
   const handleLoadMore = () => {
     if (hasMoreMessages && !isLoadingMessages) {

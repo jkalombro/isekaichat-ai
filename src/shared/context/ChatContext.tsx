@@ -43,6 +43,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [messagesByChar, setMessagesByChar] = useState<Record<string, Message[]>>({});
   const [isSyncing, setIsSyncing] = useState<Record<string, boolean>>({});
   const listenersRef = useRef<Record<string, Unsubscribe>>({});
+  const syncingRef = useRef<Record<string, boolean>>({});
   const selectedCharIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -161,32 +162,55 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const ensureSync = useCallback(async (charId: string): Promise<Message[]> => {
     if (listenersRef.current[charId]) {
       // Sync already active, return current messages
-      return messagesByChar[charId] || [];
+      return messagesByChar && messagesByChar[charId] ? messagesByChar[charId] : [];
+    }
+    if (syncingRef.current[charId]) {
+      return [];
     }
 
+    syncingRef.current[charId] = true;
     setIsSyncing(prev => ({ ...prev, [charId]: true }));
 
-    // Start snapshot
-    const messagesRef = collection(db, 'characters', charId, 'messages');
-    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+    try {
+      // Start snapshot
+      const messagesRef = collection(db, 'characters', charId, 'messages');
+      const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
-    // Wait for initial fetch to return current data immediately for caller
-    const initialSnapshot = await getDocs(q);
-    const initialMsgs = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-    
-    setMessagesByChar(prev => ({ ...prev, [charId]: initialMsgs }));
-    
-    // Set up long-term listener
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      const sortedMsgs = msgs.sort((a, b) => getTimestampMs(a.timestamp) - getTimestampMs(b.timestamp));
-      setMessagesByChar(prev => ({ ...prev, [charId]: sortedMsgs }));
+      // Wait for initial fetch to return current data immediately for caller
+      const initialSnapshot = await getDocs(q);
+      const initialMsgs = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+      
+      setMessagesByChar(prev => ({ ...prev, [charId]: initialMsgs }));
+      
+      // Set up long-term listener
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+        const sortedMsgs = msgs.sort((a, b) => getTimestampMs(a.timestamp) - getTimestampMs(b.timestamp));
+        setMessagesByChar(prev => ({ ...prev, [charId]: sortedMsgs }));
+        setIsSyncing(prev => ({ ...prev, [charId]: false }));
+        syncingRef.current[charId] = false;
+      }, (error) => {
+        console.error("Firestore sync error:", error);
+        setIsSyncing(prev => ({ ...prev, [charId]: false }));
+        syncingRef.current[charId] = false;
+      });
+
+      listenersRef.current[charId] = unsubscribe;
+
+      // Handle the case where the collection is empty immediately
+      if (initialMsgs.length === 0) {
+        setIsSyncing(prev => ({ ...prev, [charId]: false }));
+        syncingRef.current[charId] = false;
+      }
+
+      return initialMsgs;
+    } catch (error) {
+      console.error("Initial fetch error:", error);
       setIsSyncing(prev => ({ ...prev, [charId]: false }));
-    });
-
-    listenersRef.current[charId] = unsubscribe;
-    return initialMsgs;
-  }, [messagesByChar]);
+      syncingRef.current[charId] = false;
+      return [];
+    }
+  }, []);
 
   // Clean up listeners on unmount
   useEffect(() => {
