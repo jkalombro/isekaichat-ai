@@ -104,44 +104,51 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Skip if currently selected
       if (selectedCharIdRef.current === char.id) continue;
 
-      if (!record.lastMessageSent) {
-        // Initialize if null
-        updateStatus(char.id, { lastMessageSent: now });
-        continue;
-      }
+      // Check if eligible (never messaged before OR it's been a day)
+      const isEligible = !record.lastMessageSent || (now - record.lastMessageSent >= dayInMs);
 
-      if (now - record.lastMessageSent >= dayInMs) {
+      if (isEligible) {
         // 20% chance
         if (Math.random() < 0.2) {
           // Must have memory
-          if (!char.memories) continue;
+          if (char.memories) {
+            try {
+              console.log(`[Proactive Check] Character ${char.name} selected for proactive contact.`);
+              const aiResponse = await getProactiveCharacterResponse(
+                char.name,
+                char.source,
+                char.profile,
+                char.memories,
+                user.geminiKey
+              );
 
-          try {
-            console.log(`[Proactive Check] Character ${char.name} evaluated for messaging.`);
-            const aiResponse = await getProactiveCharacterResponse(
-              char.name,
-              char.source,
-              char.profile,
-              char.memories,
-              user.geminiKey
-            );
+              const charMsgData = {
+                sender: 'character' as const,
+                text: aiResponse.text,
+                timestamp: serverTimestamp(),
+                tokensConsumed: aiResponse.tokensConsumed
+              };
 
-            const charMsgData = {
-              sender: 'character' as const,
-              text: aiResponse.text,
-              timestamp: serverTimestamp(),
-              tokensConsumed: aiResponse.tokensConsumed
-            };
-
-            await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
-            updateStatus(char.id, { lastMessageSent: Date.now() });
-            incrementUnread(char.id);
-            
-            // Intentional 1-second delay between character actions to prevent Gemini rate limiting
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-          } catch (error) {
-            console.error(`Proactive Message Error (${char.name}):`, error);
+              await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
+              updateStatus(char.id, { lastMessageSent: Date.now() });
+              incrementUnread(char.id);
+              
+              // Intentional 1-second delay between character actions to prevent Gemini rate limiting
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+            } catch (error) {
+              console.error(`Proactive Message Error (${char.name}):`, error);
+            }
+          } else {
+            // No memory yet, but we rolled "yes". Update timestamp to start the 24h timer anyway
+            if (!record.lastMessageSent) {
+              updateStatus(char.id, { lastMessageSent: now });
+            }
+          }
+        } else {
+          // Rolled "no". Update timestamp if it was null to start the 24h timer
+          if (!record.lastMessageSent) {
+            updateStatus(char.id, { lastMessageSent: now });
           }
         }
       }
