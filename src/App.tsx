@@ -17,7 +17,7 @@ import { ProcessingOverlay } from '@/pages/Chat/components/modals/ProcessingOver
 import { APP_VERSION } from '@/shared/constants';
 
 const Splash = () => (
-  <div className="h-screen w-full flex flex-col items-center justify-center bg-background relative overflow-hidden">
+  <div className="h-full w-full flex flex-col items-center justify-center bg-background relative overflow-hidden">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] opacity-[0.05]" />
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}

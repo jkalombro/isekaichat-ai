@@ -53,6 +53,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     selectedCharIdRef.current = selectedCharId;
   }, [selectedCharId]);
 
+  // Clear all state on logout
+  useEffect(() => {
+    if (!user) {
+      setSelectedCharId(null);
+      setCharacters([]);
+      setMessagesByChar({});
+      setIsSyncing({});
+      
+      // Clean up all active listeners
+      Object.keys(listenersRef.current).forEach(key => {
+        const unsub = listenersRef.current[key];
+        if (typeof unsub === 'function') unsub();
+      });
+      listenersRef.current = {};
+      syncingRef.current = {};
+    }
+  }, [user]);
+
   // --- Status & Unread logic ---
   const [statuses, setStatuses] = useState<LocalStatusMap>(() => {
     const saved = localStorage.getItem(STATUS_KEY);
@@ -93,7 +111,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("[Proactive Check] Triggered. Analyzing online characters...");
     const now = Date.now();
     const currentStatuses = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}') as LocalStatusMap;
-    const dayInMs = 24 * 60 * 60 * 1000;
+    const cooldownMs = 20 * 60 * 60 * 1000;
 
     for (const char of characters) {
       // Re-read statuses inside loop to ensure we have fresh data after previous iterations
@@ -104,12 +122,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Skip if currently selected
       if (selectedCharIdRef.current === char.id) continue;
 
-      // Check if eligible (never messaged before OR it's been a day)
-      const isEligible = !record.lastMessageSent || (now - record.lastMessageSent >= dayInMs);
+      // Check if eligible (never messaged before OR it's been the cooldown period)
+      const isEligible = !record.lastMessageSent || (now - record.lastMessageSent >= cooldownMs);
 
       if (isEligible) {
-        // 20% chance
-        if (Math.random() < 0.2) {
+        // 30% chance
+        if (Math.random() < 0.3) {
           // Must have memory
           if (char.memories) {
             try {
@@ -123,6 +141,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
               );
 
               const charMsgData = {
+                chatId: char.id,
                 sender: 'character' as const,
                 text: aiResponse.text,
                 timestamp: serverTimestamp(),

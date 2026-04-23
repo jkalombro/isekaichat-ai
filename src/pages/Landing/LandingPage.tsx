@@ -11,7 +11,7 @@ interface LandingPageProps {
 
 export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 overflow-hidden relative">
+    <div className="h-full w-full bg-background text-foreground flex flex-col items-center justify-center p-4 relative overflow-y-auto custom-scrollbar">
       {/* Background decorative elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-400/10 blur-[120px] rounded-full animate-pulse delay-700" />

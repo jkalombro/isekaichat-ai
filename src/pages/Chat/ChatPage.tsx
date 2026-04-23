@@ -438,7 +438,7 @@ export const ChatPage = ({
   }, [statuses, characters, user]);
 
   return (
-    <div className="h-screen bg-background text-foreground flex overflow-hidden">
+    <div className="h-full bg-background text-foreground flex overflow-hidden">
       <Sidebar 
         characters={characters}
         selectedChar={selectedChar}
