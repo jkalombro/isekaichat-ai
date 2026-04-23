@@ -7,11 +7,11 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="h-full w-full flex flex-col bg-background text-foreground overflow-hidden relative">
+    <div className="fixed inset-0 w-full h-full flex flex-col bg-background text-foreground overflow-hidden">
       <Toaster position="top-center" richColors />
-      <div className="flex-1 w-full relative">
+      <main className="flex-1 w-full relative flex flex-col min-h-0 overflow-hidden">
         {children}
-      </div>
+      </main>
     </div>
   );
 };

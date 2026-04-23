@@ -114,14 +114,12 @@ service cloud.firestore {
       allow delete: if (isCharOwner(resource.data) || isAdmin()) && isValidId(characterId);
 
       match /messages/{messageId} {
-        allow get: if (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin()) && isValidId(messageId);
-        allow list: if isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin();
-        allow create: if (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin()) && isValidId(messageId) && isValidMessage(request.resource.data);
-        allow update: if (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin()) && 
-                      isValidId(messageId) &&
+        allow get, list: if isAuthenticated() && (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin());
+        allow create: if isAuthenticated() && (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin()) && isValidMessage(request.resource.data);
+        allow update: if isAuthenticated() && (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin()) && 
                       isValidMessage(request.resource.data) && 
                       (resource.data.sender == 'user' || isAdmin());
-        allow delete: if (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin()) && isValidId(messageId);
+        allow delete: if isAuthenticated() && (isCharOwner(get(/databases/$(database)/documents/characters/$(characterId)).data) || isAdmin());
       }
 
       match /summarytokens/{tokenId} {

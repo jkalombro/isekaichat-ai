@@ -108,7 +108,7 @@ export const MessageList = ({
 
   return (
     <ScrollArea 
-      className="flex-1 h-full min-h-0 p-6" 
+      className="flex-1 min-h-0 p-6" 
       viewportRef={scrollRef}
       onScroll={handleScroll}
     >

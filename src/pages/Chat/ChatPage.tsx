@@ -171,10 +171,6 @@ export const ChatPage = ({
       handleIncomingReply(char.id, aiResponse.text, aiResponse.tokensConsumed);
       
       // Check for summarization after delayed reply
-      // Note: triggerDelayedReply might happen in background, messages state might be stale
-      // but onSnapshot will update it. For safety we can pass current messages from closure
-      // or just trust the next turn. 
-      // User said they want to pass messages to checkAndSummarize.
       checkAndSummarize(char, [...fetchedMessages, charMsgData as any], user);
       
     } catch (error) {
@@ -228,8 +224,6 @@ export const ChatPage = ({
   }, [user, isAuthReady]);
 
   // Fetch messages
-  // This is now handled by the ChatContext auto-syncing when selectedCharId changes
-  // We just sync local selectedChar state with the characters list from store
   useEffect(() => {
     if (selectedCharId) {
       const updatedChar = characters.find(c => c.id === selectedCharId);
@@ -407,7 +401,6 @@ export const ChatPage = ({
   };
 
   const handleIncomingReply = (charId: string, text: string, tokens: number) => {
-    // If user switched away during the async call, increment unread for that character
     if (currentCharIdRef.current !== charId) {
       incrementUnread(charId);
       toast.info(`New message from ${capitalize(characters.find(c => c.id === charId)?.name || 'character')}`);
@@ -426,10 +419,7 @@ export const ChatPage = ({
       for (const [charId, _] of pendingChars) {
         const char = characters.find(c => c.id === charId);
         if (char) {
-          // Immediately clear the flag to prevent duplicate triggers
           updateStatus(charId, { messagedWhileOffline: false });
-          
-          // Small delay before reply to feel natural
           setTimeout(() => triggerDelayedReply(char), 3000);
         }
       }
@@ -438,7 +428,7 @@ export const ChatPage = ({
   }, [statuses, characters, user]);
 
   return (
-    <div className="h-full bg-background text-foreground flex overflow-hidden">
+    <div className="flex-1 w-full h-full bg-background text-foreground flex overflow-hidden relative">
       <Sidebar 
         characters={characters}
         selectedChar={selectedChar}
