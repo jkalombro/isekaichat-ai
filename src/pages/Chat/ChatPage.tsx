@@ -15,7 +15,7 @@ import { ModalManager } from './components/ModalManager';
 import { ChatHome } from './components/ChatHome';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useChatStore } from '@/shared/context/ChatContext';
-import { calculateTokensForCharacter, checkAndSummarize } from './utils/chatUtils';
+import { calculateTokensForCharacter, checkAndSummarize } from '@/shared/utils/chatUtils';
 
 interface ChatPageProps {
   user: any;
@@ -122,74 +122,6 @@ export const ChatPage = ({
       calculateTokensForCharacter(selectedChar, user);
     }
     onShowAdmin();
-  };
-
-  const triggerDelayedReply = async (char: Character) => {
-    if (!user) return;
-
-    try {
-      setTypingCharId(char.id);
-      
-      // Use Store to get/fetch messages
-      const fetchedMessages = await ensureSync(char.id);
-      
-      if (fetchedMessages.length === 0) return;
-
-      const lastMsg = fetchedMessages[fetchedMessages.length - 1];
-      if (lastMsg.sender !== 'user') return; 
-
-      const lastSummaryIndex = char.lastSummarizedIndex || 0;
-      const history = fetchedMessages.slice(lastSummaryIndex, -1).map(m => ({
-        role: m.sender === 'user' ? 'user' as const : 'model' as const,
-        parts: [{ text: m.text }]
-      }));
-
-      const context = {
-        lastConversationTime: lastMsg.timestamp?.toDate?.()?.toISOString() || lastMsg.timestamp?.toString(),
-        wasOffline: true,
-        userDidNotAnswerQuestion: false,
-        memories: char.memories
-      };
-
-      const aiResponse = await getCharacterResponse(
-        char.name,
-        char.source,
-        char.profile,
-        history,
-        lastMsg.text,
-        context,
-        user.geminiKey,
-        selectedModel
-      ) as { text: string; tokensConsumed: number };
-
-      const charMsgData = {
-        chatId: char.id,
-        sender: 'character' as const,
-        text: aiResponse.text,
-        timestamp: serverTimestamp(),
-        tokensConsumed: aiResponse.tokensConsumed
-      };
-
-      await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
-      setTypingCharId(null);
-      trackMessageSent(char.id);
-
-      // Reset to online if they were unstable/returning
-      const currentStatus = statuses[char.id]?.status;
-      if (currentStatus === 'unstable') {
-        updateStatus(char.id, { status: 'online', lastUpdate: Date.now() });
-      }
-
-      handleIncomingReply(char.id, aiResponse.text, aiResponse.tokensConsumed);
-      
-      // Check for summarization after delayed reply
-      checkAndSummarize(char, [...fetchedMessages, charMsgData as any], user);
-      
-    } catch (error) {
-      console.error("Delayed Reply Error:", error);
-    } finally {
-      setTypingCharId(null);
-    }
   };
 
   const checkConnection = async () => {
@@ -417,26 +349,6 @@ export const ChatPage = ({
       toast.info(`New message from ${capitalize(characters.find(c => c.id === charId)?.name || 'character')}`);
     }
   };
-
-  // Trigger delayed replies when characters return to online
-  useEffect(() => {
-    const checkDelayedReplies = async () => {
-      if (!user) return;
-      
-      const pendingChars = (Object.entries(statuses) as [string, StatusRecord][]).filter(
-        ([_, record]) => record.status === 'online' && record.messagedWhileOffline
-      );
-
-      for (const [charId, _] of pendingChars) {
-        const char = characters.find(c => c.id === charId);
-        if (char) {
-          updateStatus(charId, { messagedWhileOffline: false });
-          setTimeout(() => triggerDelayedReply(char), 3000);
-        }
-      }
-    };
-    checkDelayedReplies();
-  }, [statuses, characters, user]);
 
   return (
     <div className="flex-1 w-full h-full bg-background text-foreground flex overflow-hidden relative">

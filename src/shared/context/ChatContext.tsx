@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp, limitToLast } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Character, Message, LocalStatusMap, StatusRecord, CharacterStatus, UnreadMap } from '../types';
 import { useAuth } from './AuthContext';
-import { getProactiveCharacterResponse } from '../services/gemini';
+import { getProactiveCharacterResponse, getCharacterResponse } from '../services/gemini';
+import { checkAndSummarize } from '../utils/chatUtils';
 
 const STATUS_KEY = 'character_statuses';
 const UNREAD_KEY = 'unread_messages';
@@ -39,7 +40,7 @@ const getTimestampMs = (timestamp: any) => {
 };
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isAuthReady } = useAuth();
+  const { user, isAuthReady, selectedModel } = useAuth();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [messagesByChar, setMessagesByChar] = useState<Record<string, Message[]>>({});
@@ -105,39 +106,60 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const runProactiveCheck = useCallback(async () => {
+  const runCharacterActions = useCallback(async () => {
     if (!user || !user.geminiKey || characters.length === 0) return;
     
-    console.log("[Proactive Check] Triggered. Analyzing online characters...");
+    console.log("[Character Actions] Triggered. Analyzing online characters...");
     const now = Date.now();
-    const currentStatuses = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}') as LocalStatusMap;
     const cooldownMs = 20 * 60 * 60 * 1000;
 
     for (const char of characters) {
-      // Re-read statuses inside loop to ensure we have fresh data after previous iterations
+      // Re-read statuses inside loop to ensure we have fresh data
       const freshStatuses = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}') as LocalStatusMap;
       const record = freshStatuses[char.id];
       if (!record || record.status !== 'online') continue;
       
-      // Skip if currently selected
+      // Skip if currently selected (user is actively chatting)
       if (selectedCharIdRef.current === char.id) continue;
 
-      // Check if eligible (never messaged before OR it's been the cooldown period)
-      const isEligible = !record.lastMessageSent || (now - record.lastMessageSent >= cooldownMs);
+      // 1. Check for Pending Replies (Messaged while offline)
+      if (record.messagedWhileOffline) {
+        try {
+          console.log(`[Pending Reply] Character ${char.name} is replying to messages received while offline.`);
+          
+          // Fetch last few messages for context
+          const messagesRef = collection(db, 'characters', char.id, 'messages');
+          const q = query(messagesRef, orderBy('timestamp', 'desc'), limitToLast(20));
+          const snapshot = await getDocs(q);
+          const fetchedMessages = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Message))
+            .sort((a, b) => getTimestampMs(a.timestamp) - getTimestampMs(b.timestamp));
 
-      if (isEligible) {
-        // 30% chance
-        if (Math.random() < 0.3) {
-          // Must have memory
-          if (char.memories) {
-            try {
-              console.log(`[Proactive Check] Character ${char.name} selected for proactive contact.`);
-              const aiResponse = await getProactiveCharacterResponse(
+          if (fetchedMessages.length > 0) {
+            const lastMsg = fetchedMessages[fetchedMessages.length - 1];
+            // Only reply if the last message was from the user
+            if (lastMsg.sender === 'user') {
+              const lastSummaryIndex = char.lastSummarizedIndex || 0;
+              const history = fetchedMessages.slice(lastSummaryIndex, -1).map(m => ({
+                role: m.sender === 'user' ? 'user' as const : 'model' as const,
+                parts: [{ text: m.text }]
+              }));
+
+              const context = {
+                lastConversationTime: lastMsg.timestamp?.toDate?.()?.toISOString() || lastMsg.timestamp?.toString(),
+                wasOffline: true,
+                memories: char.memories
+              };
+
+              const aiResponse = await getCharacterResponse(
                 char.name,
                 char.source,
                 char.profile,
-                char.memories,
-                user.geminiKey
+                history,
+                lastMsg.text,
+                context,
+                user.geminiKey,
+                selectedModel
               );
 
               const charMsgData = {
@@ -149,23 +171,64 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
               };
 
               await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
-              updateStatus(char.id, { lastMessageSent: Date.now() });
+              updateStatus(char.id, { lastMessageSent: Date.now(), messagedWhileOffline: false });
               incrementUnread(char.id);
               
-              // Intentional 1-second delay between character actions to prevent Gemini rate limiting
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              // Check for summarization
+              checkAndSummarize(char, [...fetchedMessages, charMsgData as any], user);
               
-            } catch (error) {
-              console.error(`Proactive Message Error (${char.name}):`, error);
+              // Small delay
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+              // Last message was already from character, just clear the flag
+              updateStatus(char.id, { messagedWhileOffline: false });
             }
           } else {
-            // No memory yet, but we rolled "yes". Update timestamp to start the 24h timer anyway
-            if (!record.lastMessageSent) {
-              updateStatus(char.id, { lastMessageSent: now });
-            }
+            updateStatus(char.id, { messagedWhileOffline: false });
+          }
+        } catch (error) {
+          console.error(`Pending Reply Error (${char.name}):`, error);
+        }
+        continue; // Move to next character, don't also do proactive check
+      }
+
+      // 2. Check for Proactive Starts
+      const isEligibleProactive = !record.lastMessageSent || (now - record.lastMessageSent >= cooldownMs);
+
+      if (isEligibleProactive) {
+        // 30% chance
+        if (Math.random() < 0.3) {
+          // Must have memory for proactive conversation usually, but we could start anyway
+          try {
+            console.log(`[Proactive Check] Character ${char.name} selected for proactive contact.`);
+            const aiResponse = await getProactiveCharacterResponse(
+              char.name,
+              char.source,
+              char.profile,
+              char.memories || "",
+              user.geminiKey,
+              selectedModel
+            );
+
+            const charMsgData = {
+              chatId: char.id,
+              sender: 'character' as const,
+              text: aiResponse.text,
+              timestamp: serverTimestamp(),
+              tokensConsumed: aiResponse.tokensConsumed
+            };
+
+            await addDoc(collection(db, 'characters', char.id, 'messages'), charMsgData);
+            updateStatus(char.id, { lastMessageSent: Date.now() });
+            incrementUnread(char.id);
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+          } catch (error) {
+            console.error(`Proactive Message Error (${char.name}):`, error);
           }
         } else {
-          // Rolled "no". Update timestamp if it was null to start the 24h timer
+          // Rolled "no". Update timestamp if it was null to start the timer
           if (!record.lastMessageSent) {
             updateStatus(char.id, { lastMessageSent: now });
           }
@@ -202,8 +265,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Proactive check 30 seconds after randomization
     if (proactiveTimeoutRef.current) clearTimeout(proactiveTimeoutRef.current);
-    proactiveTimeoutRef.current = setTimeout(runProactiveCheck, PROACTIVE_DELAY);
-  }, [runProactiveCheck]);
+    proactiveTimeoutRef.current = setTimeout(runCharacterActions, PROACTIVE_DELAY);
+  }, [runCharacterActions]);
 
   useEffect(() => {
     if (characters.length > 0) {
