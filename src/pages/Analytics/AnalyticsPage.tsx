@@ -116,9 +116,9 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
   const phpCost = totalTokens * 0.00000855;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="h-full bg-background text-foreground flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="p-6 border-b border-border flex items-center gap-4 bg-card/50 backdrop-blur-md sticky top-0 z-20">
+      <header className="p-6 border-b border-border flex items-center gap-4 bg-card/50 backdrop-blur-md shrink-0 z-20">
         <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -128,7 +128,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
         </h1>
       </header>
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
         <div className="max-w-4xl mx-auto p-6 space-y-8">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -227,7 +227,7 @@ export const AnalyticsPage = ({ user, onBack }: AnalyticsPageProps) => {
             </div>
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Graph Modal */}
       <AnimatePresence>

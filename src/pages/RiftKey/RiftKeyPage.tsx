@@ -62,7 +62,7 @@ export const RiftKeyPage = ({ user, onLogout }: RiftKeyPageProps) => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background relative overflow-hidden p-6">
+    <div className="h-full w-full flex flex-col items-center justify-center bg-background relative overflow-hidden p-6">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] opacity-[0.05]" />
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-[100px] animate-pulse" />

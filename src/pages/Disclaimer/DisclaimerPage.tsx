@@ -9,7 +9,7 @@ interface DisclaimerPageProps {
 
 export const DisclaimerPage = ({ onBack }: DisclaimerPageProps) => {
   return (
-    <div className="min-h-screen bg-background text-foreground p-6 md:p-12 overflow-y-auto">
+    <div className="h-full bg-background text-foreground p-6 md:p-12 overflow-y-auto custom-scrollbar">
       <div className="max-w-3xl mx-auto space-y-12">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -18,7 +18,7 @@ export const DisclaimerPage = ({ onBack }: DisclaimerPageProps) => {
         >
           <Button variant="ghost" onClick={onBack} className="gap-2 rounded-xl">
             <ArrowLeft className="w-4 h-4" />
-            Back to Rift
+            Back
           </Button>
           <div className="flex items-center gap-2 text-primary">
             <Shield className="w-6 h-6" />

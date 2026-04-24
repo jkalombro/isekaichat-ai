@@ -170,7 +170,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -178,12 +178,10 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  opacity: 0.2;
+  background: color-mix(in oklch, var(--color-primary), transparent 70%);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
-  opacity: 1;
+  background: var(--color-primary);
 }

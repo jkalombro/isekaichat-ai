@@ -47,6 +47,18 @@ export const ChatPage = ({
     setUnstable
   } = useChatStore();
 
+  const sortedCharacters = React.useMemo(() => {
+    return [...characters].sort((a, b) => {
+      const unreadA = unreads[a.id] || 0;
+      const unreadB = unreads[b.id] || 0;
+      
+      if (unreadA > 0 && unreadB === 0) return -1;
+      if (unreadA === 0 && unreadB > 0) return 1;
+      
+      return (b.totalTokensConsumed || 0) - (a.totalTokensConsumed || 0);
+    });
+  }, [characters, unreads]);
+
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [typingCharId, setTypingCharId] = useState<string | null>(null);
@@ -213,8 +225,7 @@ export const ChatPage = ({
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const chars = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Character))
-          .sort((a, b) => (b.totalTokensConsumed || 0) - (a.totalTokensConsumed || 0));
+          .map(doc => ({ id: doc.id, ...doc.data() } as Character));
         setCharacters(chars);
       }, (error) => {
         console.error("Characters Fetch Error:", error);
@@ -430,7 +441,7 @@ export const ChatPage = ({
   return (
     <div className="flex-1 w-full h-full bg-background text-foreground flex overflow-hidden relative">
       <Sidebar 
-        characters={characters}
+        characters={sortedCharacters}
         selectedChar={selectedChar}
         onSelectChar={handleSelectChar}
         isSidebarOpen={isSidebarOpen}
@@ -512,7 +523,7 @@ export const ChatPage = ({
 
       <ModalManager 
         user={user}
-        characters={characters}
+        characters={sortedCharacters}
         selectedChar={selectedChar}
         setSelectedChar={setSelectedChar}
         selectedModel={selectedModel}
