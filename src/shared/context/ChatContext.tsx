@@ -193,21 +193,42 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 2. Check for Proactive Starts
-      const isEligibleProactive = !record.lastMessageSent || (now - record.lastMessageSent >= cooldownMs);
+      const isEligibleProactive = (char.memories && char.memories.trim() !== "") && (!record.lastMessageSent || (now - record.lastMessageSent >= cooldownMs));
 
       if (isEligibleProactive) {
         // 30% chance
         if (Math.random() < 0.3) {
-          // Must have memory for proactive conversation usually, but we could start anyway
           try {
             console.log(`[Proactive Check] Character ${char.name} selected for proactive contact.`);
+            
+            // Try to find the actual last message time to give context
+            let timeContext = "over a day";
+            const messagesRef = collection(db, 'characters', char.id, 'messages');
+            const q = query(messagesRef, orderBy('timestamp', 'desc'), limitToLast(1));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              const lastDoc = snapshot.docs[0].data();
+              if (lastDoc.timestamp) {
+                const lastTime = lastDoc.timestamp.toDate();
+                const diffMs = now - lastTime.getTime();
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                if (diffHours < 24) {
+                  timeContext = `${diffHours} hours`;
+                } else {
+                  const diffDays = Math.floor(diffHours / 24);
+                  timeContext = diffDays === 1 ? "a day" : `${diffDays} days`;
+                }
+              }
+            }
+
             const aiResponse = await getProactiveCharacterResponse(
               char.name,
               char.source,
               char.profile,
               char.memories || "",
               user.geminiKey,
-              selectedModel
+              selectedModel,
+              timeContext
             );
 
             const charMsgData = {

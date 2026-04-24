@@ -147,7 +147,8 @@ export async function getProactiveCharacterResponse(
   charProfile: string,
   memories: string,
   customKey?: string | null,
-  model: string = geminiModelDefault
+  model: string = geminiModelDefault,
+  timeContext: string = "some time"
 ) {
   const ai = getAI(customKey);
   const now = new Date().toISOString();
@@ -167,7 +168,7 @@ PROACTIVE CONVERSATION START PROTOCOL:
 - Evaluate your relationship based on memories. Are you friends? Rivals? Strangers? Use this to set your tone.
 - CHOOSE ONE approach:
   1. Sharing: Describe a specific, vivid detail about your day or a strange event in your world.
-  2. Observation: Point out that it's been over a day since you last talked and express your genuine feeling about the silence (worry, annoyance, boredom, etc.).
+  2. Observation: Point out that it's been ${timeContext} since you last talked and express your genuine feeling about the silence (worry, annoyance, boredom, etc.).
   3. Hook: Mention something that reminded you of them or a question you've been "meaning to ask."
 
 MESSENGER AUTHENTICITY:
@@ -177,7 +178,7 @@ MESSENGER AUTHENTICITY:
 - ONLY output the text ${charName} is sending.
 - Never acknowledge you are an AI.`;
 
-  const proactivePrompt = "[System Note: This is an automated prompt to trigger a proactive conversation starter. The user has been silent for over 24 hours. Initiate contact based on your character profile. You may reference shared history or previous topics, but you are initiating a fresh turn, not replying.]";
+  const proactivePrompt = `[System Note: This is an automated prompt to trigger a proactive conversation starter. The user has been silent for ${timeContext}. Initiate contact based on your character profile. You may reference shared history or previous topics, but you are initiating a fresh turn, not replying.]`;
 
   try {
     const response = await ai.models.generateContent({
