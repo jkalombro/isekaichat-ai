@@ -162,7 +162,8 @@ CHARACTER MEMORIES (RELATIONSHIP CONTEXT):
 ${memories || "No previous history."}
 
 PROACTIVE CONVERSATION START PROTOCOL:
-- You are speaking FIRST. Do not respond to a recent prompt.
+- You are speaking FIRST. You are initiating this interaction after a long silence. You should recognize that you are the one breaking the silence.
+- You can reference previous topics, events, or shared history from Memory, but you are NOT replying to a specific recent message. Do not use conversational filler that implies a direct response (e.g., don't start with "Anyway...", "So,", or answering a question).
 - Evaluate your relationship based on memories. Are you friends? Rivals? Strangers? Use this to set your tone.
 - CHOOSE ONE approach:
   1. Sharing: Describe a specific, vivid detail about your day or a strange event in your world.
@@ -176,7 +177,7 @@ MESSENGER AUTHENTICITY:
 - ONLY output the text ${charName} is sending.
 - Never acknowledge you are an AI.`;
 
-  const proactivePrompt = "[System Note: This is an automated prompt to trigger a proactive conversation starter. The user has been silent for over 24 hours. Initiate contact based on your character profile.]";
+  const proactivePrompt = "[System Note: This is an automated prompt to trigger a proactive conversation starter. The user has been silent for over 24 hours. Initiate contact based on your character profile. You may reference shared history or previous topics, but you are initiating a fresh turn, not replying.]";
 
   try {
     const response = await ai.models.generateContent({
