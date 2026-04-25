@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp, limit, where } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Character, Message, LocalStatusMap, StatusRecord, CharacterStatus, UnreadMap } from '../types';
 import { useAuth } from './AuthContext';
@@ -196,15 +196,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const isEligibleProactive = (char.memories && char.memories.trim() !== "") && (!record.lastMessageSent || (now - record.lastMessageSent >= cooldownMs));
 
       if (isEligibleProactive) {
-        // 30% chance
-        if (Math.random() < 0.3) {
+        // 20% chance
+        if (Math.random() < 0.2) {
           try {
             console.log(`[Proactive Check] Character ${char.name} selected for proactive contact.`);
             
-            // Try to find the actual last message time to give context
+            // Try to find your last message time to give context
             let timeContext = "over a day";
             const messagesRef = collection(db, 'characters', char.id, 'messages');
-            const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+            // Basis: Using the last message sent by the user
+            const q = query(messagesRef, where('sender', '==', 'user'), orderBy('timestamp', 'desc'), limit(1));
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
               const lastDoc = snapshot.docs[0].data();
