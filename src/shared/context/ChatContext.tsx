@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp, limitToLast } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, Unsubscribe, addDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Character, Message, LocalStatusMap, StatusRecord, CharacterStatus, UnreadMap } from '../types';
 import { useAuth } from './AuthContext';
@@ -129,7 +129,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Fetch last few messages for context
           const messagesRef = collection(db, 'characters', char.id, 'messages');
-          const q = query(messagesRef, orderBy('timestamp', 'desc'), limitToLast(20));
+          const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(20));
           const snapshot = await getDocs(q);
           const fetchedMessages = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as Message))
@@ -204,16 +204,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Try to find the actual last message time to give context
             let timeContext = "over a day";
             const messagesRef = collection(db, 'characters', char.id, 'messages');
-            const q = query(messagesRef, orderBy('timestamp', 'desc'), limitToLast(1));
+            const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
               const lastDoc = snapshot.docs[0].data();
               if (lastDoc.timestamp) {
-                const lastTime = lastDoc.timestamp.toDate();
-                const diffMs = now - lastTime.getTime();
+                const lastTimeMs = getTimestampMs(lastDoc.timestamp);
+                const diffMs = now - lastTimeMs;
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 if (diffHours < 24) {
-                  timeContext = `${diffHours} hours`;
+                  timeContext = diffHours === 1 ? "an hour" : (diffHours === 0 ? "a little while" : `${diffHours} hours`);
                 } else {
                   const diffDays = Math.floor(diffHours / 24);
                   timeContext = diffDays === 1 ? "a day" : `${diffDays} days`;
