@@ -102,7 +102,7 @@ export const ModalManager = ({
         existingAvatar = globalMatch.avatarUrl;
         toast.info(`Existing dimensional frequency found for ${capitalize(globalMatch.name)}. Syncing data...`);
       } else {
-        profile = await harvestCharacterProfile(charName, charSource, user.geminiKey, selectedModel);
+        profile = await harvestCharacterProfile(charName, charSource, user.geminiKey, "gemini-3-flash-preview");
       }
 
       if (!profile || !profile.text || profile.text.toUpperCase().includes("CHARACTER_NOT_FOUND")) {

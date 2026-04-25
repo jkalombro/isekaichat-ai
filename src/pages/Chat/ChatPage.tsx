@@ -294,7 +294,7 @@ export const ChatPage = ({
 
       const context = {
         lastConversationTime: lastCharMsg?.timestamp?.toDate?.()?.toISOString() || lastCharMsg?.timestamp?.toString(),
-        wasOffline: charStatus === 'offline',
+        wasOffline: statuses[selectedChar.id]?.messagedWhileOffline || false,
         userDidNotAnswerQuestion: userDidNotAnswerQuestion,
         memories: selectedChar.memories
       };

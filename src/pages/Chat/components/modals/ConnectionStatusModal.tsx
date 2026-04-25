@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Handshake, Eye, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Character } from '@/shared/types';
@@ -21,12 +22,14 @@ export const ConnectionStatusModal = ({
   onOpenReset,
   onOpenSever
 }: ConnectionStatusModalProps) => {
+  const [activeTab, setActiveTab] = useState<'profile' | 'memory'>('profile');
   const [showSpoiler, setShowSpoiler] = useState(false);
 
-  // Reset spoiler state when character or modal visibility changes
+  // Reset states when character or modal visibility changes
   useEffect(() => {
     if (!isOpen) {
       setShowSpoiler(false);
+      setActiveTab('profile');
     }
   }, [isOpen]);
 
@@ -46,12 +49,12 @@ export const ConnectionStatusModal = ({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="absolute right-4 top-4 rounded-full h-8 w-8 text-muted-foreground hover:bg-muted"
+                className="absolute right-4 top-4 rounded-full h-8 w-8 text-muted-foreground hover:bg-muted z-20"
                 onClick={onClose}
               >
                 <X className="w-4 h-4" />
               </Button>
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-4 shrink-0">
                 <CardTitle className="flex items-center gap-3 text-2xl text-primary font-black tracking-tighter uppercase mb-6">
                   <Handshake className="w-8 h-8" />
                   Connection Status
@@ -81,40 +84,87 @@ export const ConnectionStatusModal = ({
                 </div>
               </CardHeader>
 
-              <div className="px-6 pb-6 pt-2 space-y-4 overflow-y-auto min-h-0 flex-1">
-                <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-1">Memory with you</h4>
-                  <div className="relative h-[180px] rounded-2xl border border-border/50 bg-muted/10 overflow-hidden flex flex-col">
-                    {selectedChar.memories ? (
-                      <div className={`p-4 relative flex-1 custom-scrollbar ${showSpoiler ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-                        <p className={`text-sm leading-relaxed transition-all duration-500 pb-2 ${!showSpoiler ? 'blur-md select-none' : ''}`}>
-                          {selectedChar.memories}
-                        </p>
-                        {!showSpoiler && (
-                          <div className="absolute inset-0 flex items-center justify-center p-6 bg-background/5 backdrop-blur-sm z-10">
-                            <Button 
-                              variant="secondary" 
-                              size="sm"
-                              onClick={() => setShowSpoiler(true)}
-                              className="rounded-full gap-2 border border-border/50 shadow-lg font-black uppercase text-[10px] tracking-widest px-6 h-10"
-                            >
-                               <Eye className="w-3.5 h-3.5" />
-                               Show Spoiler
-                            </Button>
+              {/* Tabs */}
+              <div className="px-6 flex border-b border-border/50 shrink-0">
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] relative transition-colors ${
+                    activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Profile
+                  {activeTab === 'profile' && (
+                    <motion.div 
+                      layoutId="tab-underline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                    />
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab('memory')}
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] relative transition-colors ${
+                    activeTab === 'memory' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Memory with you
+                  {activeTab === 'memory' && (
+                    <motion.div 
+                      layoutId="tab-underline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                    />
+                  )}
+                </button>
+              </div>
+
+              <div className="px-6 pb-6 pt-4 space-y-4 overflow-y-auto min-h-0 flex-1 flex flex-col">
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {activeTab === 'profile' ? (
+                    <div className="flex-1 min-h-0 flex flex-col">
+                      <div className="relative flex-1 rounded-2xl border border-border/50 bg-muted/10 overflow-hidden flex flex-col">
+                        <div className="p-5 flex-1 custom-scrollbar overflow-y-auto">
+                          <div className="markdown-body">
+                            <ReactMarkdown>
+                              {selectedChar.profile}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 min-h-0 flex flex-col">
+                      <div className="relative flex-1 rounded-2xl border border-border/50 bg-muted/10 overflow-hidden flex flex-col">
+                        {selectedChar.memories ? (
+                          <div className={`p-5 relative flex-1 custom-scrollbar ${showSpoiler ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+                            <p className={`text-sm leading-relaxed transition-all duration-500 pb-2 ${!showSpoiler ? 'blur-md select-none' : ''} whitespace-pre-wrap`}>
+                              {selectedChar.memories}
+                            </p>
+                            {!showSpoiler && (
+                              <div className="absolute inset-0 flex items-center justify-center p-6 bg-background/5 backdrop-blur-sm z-10">
+                                <Button 
+                                  variant="secondary" 
+                                  size="sm"
+                                  onClick={() => setShowSpoiler(true)}
+                                  className="rounded-full gap-2 border border-border/50 shadow-lg font-black uppercase text-[10px] tracking-widest px-6 h-10"
+                                >
+                                   <Eye className="w-3.5 h-3.5" />
+                                   Show Memory
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center text-center p-8">
+                            <p className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] leading-relaxed">
+                              Interact with the character more to create memory
+                            </p>
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center text-center p-8">
-                        <p className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] leading-relaxed">
-                          Interact with the character more to create memory
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50 shrink-0">
                   <Button 
                     variant="outline" 
                     onClick={() => {
