@@ -23,6 +23,9 @@ export async function harvestCharacterProfile(name: string, source: string, cust
     const response = await ai.models.generateContent({
       model: model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
     });
 
     const text = response.text?.trim() || "";

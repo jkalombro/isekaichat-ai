@@ -11,7 +11,7 @@ interface LandingPageProps {
 
 export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => {
   return (
-    <div className="h-full w-full bg-background text-foreground flex flex-col items-center justify-center p-4 relative overflow-y-auto custom-scrollbar">
+    <div className="min-h-full w-full bg-background text-foreground flex flex-col items-center py-12 md:justify-center p-4 relative overflow-y-auto custom-scrollbar">
       {/* Background decorative elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-400/10 blur-[120px] rounded-full animate-pulse delay-700" />
@@ -21,7 +21,7 @@ export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => 
         <motion.div 
           animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[10%] left-[5%] w-40 h-40 md:w-64 md:h-64 opacity-10 md:opacity-20"
+          className="absolute top-[10%] left-[5%] w-40 h-40 md:w-64 md:h-64 opacity-5 md:opacity-20"
         >
           <img 
             src="https://picsum.photos/seed/anime-girl-1/600/600" 
@@ -33,7 +33,7 @@ export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => 
         <motion.div 
           animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute bottom-[10%] right-[5%] w-40 h-40 md:w-72 md:h-72 opacity-10 md:opacity-20"
+          className="absolute bottom-[10%] right-[5%] w-40 h-40 md:w-72 md:h-72 opacity-5 md:opacity-20"
         >
           <img 
             src="https://picsum.photos/seed/anime-boy-1/600/600" 
@@ -50,8 +50,8 @@ export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => 
         transition={{ duration: 0.8 }}
         className="max-w-4xl w-full flex flex-col lg:flex-row items-center gap-12 relative z-10"
       >
-        <div className="flex-1 text-center lg:text-left space-y-8">
-          <div className="space-y-6 flex flex-col items-center">
+        <div className="flex-1 text-center lg:text-left space-y-8 w-full">
+          <div className="space-y-6 flex flex-col items-center lg:items-start">
             <motion.div 
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ 
@@ -64,14 +64,14 @@ export const LandingPage = ({ onLogin, onShowDisclaimer }: LandingPageProps) => 
                 opacity: { delay: 0.3 },
                 y: { repeat: Infinity, duration: 3, ease: "easeInOut" }
               }}
-              className="mb-[-1.5rem] relative z-20"
+              className="mb-[-1rem] md:mb-[-1.5rem] relative z-20"
             >
-              <AppLogo className="w-20 h-20 drop-shadow-[0_20px_20px_rgba(var(--primary-rgb),0.3)]" />
+              <AppLogo className="w-16 h-16 md:w-20 md:h-20 drop-shadow-[0_20px_20px_rgba(var(--primary-rgb),0.3)]" />
             </motion.div>
-            <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-foreground leading-none relative z-10">
+            <h1 className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter text-foreground leading-none relative z-10 break-words w-full">
               Isek<span className="text-cyan-400">AI</span><span className="text-primary">Chat</span>
             </h1>
-            <p className="text-muted-foreground text-lg md:text-xl leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
+            <p className="text-muted-foreground text-base md:text-xl leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
               A mysterious rift has opened, allowing our world to connect to the worlds of fiction. Connect your consciousness now and seize the chance to talk with your favorite character.
             </p>
           </div>
