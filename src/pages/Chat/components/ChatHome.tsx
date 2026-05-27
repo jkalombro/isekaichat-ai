@@ -4,7 +4,7 @@ import { Button } from '@/shared/components/ui/button';
 import { AppLogo } from '@/shared/components/AppLogo';
 import { APP_VERSION } from '@/shared/constants';
 import { useAuth, GeminiModel } from '@/shared/context/AuthContext';
-import { Zap, ZapOff, HelpCircle, Sun, Moon } from 'lucide-react';
+import { Zap, ZapOff, Sparkles, HelpCircle, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/shared/context/ThemeContext';
 
 interface ChatHomeProps {
@@ -187,17 +187,6 @@ export const ChatHome = ({
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Dimensional Engine</p>
           <div className="flex p-1 bg-muted/30 rounded-2xl border border-border/50 backdrop-blur-sm">
             <button
-              onClick={() => setSelectedModel('gemini-3.1-flash-lite-preview')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                selectedModel === 'gemini-3.1-flash-lite-preview'
-                  ? 'bg-primary text-primary-foreground shadow-lg'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <ZapOff className="w-3 h-3" />
-              3.1 Lite
-            </button>
-            <button
               onClick={() => setSelectedModel('gemini-3-flash-preview')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 selectedModel === 'gemini-3-flash-preview'
@@ -207,6 +196,17 @@ export const ChatHome = ({
             >
               <Zap className="w-3 h-3" />
               3 Flash
+            </button>
+            <button
+              onClick={() => setSelectedModel('gemini-3.5-flash')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                selectedModel === 'gemini-3.5-flash'
+                  ? 'bg-primary text-primary-foreground shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              3.5 Flash
             </button>
           </div>
         </div>

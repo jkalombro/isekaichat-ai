@@ -9,7 +9,7 @@ const getAI = (customKey?: string | null) => {
   return new GoogleGenAI({ apiKey });
 };
 
-const geminiModelDefault = "gemini-3.1-flash-lite-preview";
+const geminiModelDefault = "gemini-3-flash-preview";
 
 export async function harvestCharacterProfile(name: string, source: string, customKey?: string | null, model: string = geminiModelDefault) {
   const ai = getAI(customKey);
