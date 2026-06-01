@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, X, MessageCircle, LogOut, User as UserIcon, BarChart3, Shield, Hammer } from 'lucide-react';
+import { Home, X, MessageCircle, LogOut, User as UserIcon, BarChart3, Shield, Hammer, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -8,6 +8,8 @@ import { AppLogo } from '@/shared/components/AppLogo';
 import { Character } from '@/shared/types';
 import { capitalize } from '@/shared/utils';
 import { useChatStore } from '@/shared/context/ChatContext';
+import { toast } from 'sonner';
+import { useAuth } from '@/shared/context/AuthContext';
 
 interface SidebarProps {
   characters: Character[];
@@ -41,6 +43,48 @@ export const Sidebar = ({
   onShowMaintenance,
 }: SidebarProps) => {
   const { statuses, unreads } = useChatStore();
+  const { updateUserPhoto } = useAuth();
+  const [isUploadingUser, setIsUploadingUser] = React.useState(false);
+
+  const handleUserFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingUser(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'cloudinary-training';
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'unsigned_preset';
+    
+    formData.append('upload_preset', uploadPreset); 
+
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Dimensional sync failed. The rift is unstable.");
+      }
+
+      const data = await response.json();
+      
+      if (data.secure_url) {
+        await updateUserPhoto(data.secure_url);
+        toast.success("Your resonance appearance updated across dimensions.");
+      }
+    } catch (error: any) {
+      console.error("User Upload Error:", error);
+      toast.error(`Rift Error: ${error.message}`);
+    } finally {
+      setIsUploadingUser(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   return (
     <>
       {/* Sidebar Overlay (Mobile) */}
@@ -149,12 +193,39 @@ export const Sidebar = ({
 
         <div className="p-4 border-t border-border space-y-4">
           <div className="flex items-center gap-3 p-2 rounded-2xl bg-muted/30 border border-border/50">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.photoURL || ''} />
-              <AvatarFallback><UserIcon className="w-4 h-4" /></AvatarFallback>
-            </Avatar>
+            <div className="relative group w-8 h-8 shrink-0">
+              <Avatar className="h-8 w-8 border border-border transition-transform group-hover:scale-105">
+                <AvatarImage src={user.photoURL || ''} />
+                <AvatarFallback>
+                  {isUploadingUser ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <UserIcon className="w-4 h-4" />
+                  )}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                {isUploadingUser ? (
+                  <Loader2 className="w-3 h-3 text-white animate-spin" />
+                ) : (
+                  <Camera className="w-3 h-3 text-white" />
+                )}
+              </div>
+              <input 
+                type="file" 
+                onChange={handleUserFileChange} 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" 
+                accept="image/*"
+                title="Update your appearance"
+                disabled={isUploadingUser}
+              />
+            </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium truncate">{user.displayName}</p>
+              {isUploadingUser ? (
+                <p className="text-xs font-semibold text-primary animate-pulse truncate">Syncing appearance...</p>
+              ) : (
+                <p className="text-sm font-medium truncate">{user.displayName}</p>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {isAdmin && (

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, onAuthStateChanged, db } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, collection, limit, query } from 'firebase/firestore';
-import { User } from 'firebase/auth';
+import { User, updateProfile } from 'firebase/auth';
 import { AppStatus } from '../types';
 
 export type GeminiModel = 'gemini-3-flash-preview' | 'gemini-3.5-flash';
@@ -14,6 +14,7 @@ interface AuthContextType {
   setSelectedModel: (model: GeminiModel) => void;
   appStatus: AppStatus | null;
   loadingStatus: boolean;
+  updateUserPhoto: (photoURL: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -23,7 +24,8 @@ const AuthContext = createContext<AuthContextType>({
   selectedModel: 'gemini-3-flash-preview',
   setSelectedModel: () => {},
   appStatus: null,
-  loadingStatus: true
+  loadingStatus: true,
+  updateUserPhoto: async () => {}
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,6 +35,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-3-flash-preview');
   const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
+
+  const updateUserPhoto = async (photoURL: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await updateProfile(auth.currentUser, { photoURL });
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await setDoc(userRef, { photoURL }, { merge: true });
+      setUser(prev => {
+        if (!prev) return null;
+        try {
+          Object.defineProperty(prev, 'photoURL', {
+            value: photoURL,
+            writable: true,
+            configurable: true
+          });
+        } catch (e) {
+          console.warn("Direct mutation of user.photoURL failed, using fallback", e);
+        }
+        return {
+          ...prev,
+          photoURL
+        };
+      });
+    } catch (e) {
+      console.error("Error updating user photo URL:", e);
+      throw e;
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'appstatus'), limit(1));
@@ -87,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthReady, selectedModel, setSelectedModel, appStatus, loadingStatus }}>
+    <AuthContext.Provider value={{ user, loading, isAuthReady, selectedModel, setSelectedModel, appStatus, loadingStatus, updateUserPhoto }}>
       {children}
     </AuthContext.Provider>
   );
