@@ -10,7 +10,7 @@ const STATUS_KEY = 'character_statuses';
 const UNREAD_KEY = 'unread_messages';
 const UPDATE_INTERVAL = 3600000; // 1 hour
 const ACTIVITY_PERSISTENCE = 900000; // 15 mins
-const PROACTIVE_DELAY = 30000; // 30 seconds
+const PROACTIVE_DELAY = 10000; // 10 seconds
 
 interface ChatContextType {
   messagesByChar: Record<string, Message[]>;
@@ -135,6 +135,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .map(doc => ({ id: doc.id, ...doc.data() } as Message))
             .sort((a, b) => getTimestampMs(a.timestamp) - getTimestampMs(b.timestamp));
 
+          // Check if last 5 messages are from them/character
+          const last5MsgCheck = fetchedMessages.slice(-5);
+          const isLast5FromThem = last5MsgCheck.length >= 5 && last5MsgCheck.every(m => m.sender === 'character');
+          if (isLast5FromThem) {
+            console.log(`[Pending Reply] Skipping automatic messaging for ${char.name} because the last 5 messages are from them.`);
+            updateStatus(char.id, { messagedWhileOffline: false });
+            continue;
+          }
+
           if (fetchedMessages.length > 0) {
             const lastMsg = fetchedMessages[fetchedMessages.length - 1];
             // Only reply if the last message was from the user
@@ -201,9 +210,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             console.log(`[Proactive Check] Character ${char.name} selected for proactive contact.`);
             
+            const messagesRef = collection(db, 'characters', char.id, 'messages');
+
+            // Check if last 5 messages are from them/character
+            const qAll = query(messagesRef, orderBy('timestamp', 'desc'), limit(5));
+            const snapshotAll = await getDocs(qAll);
+            const fetchedAll = snapshotAll.docs
+              .map(doc => ({ id: doc.id, ...doc.data() } as Message))
+              .sort((a, b) => getTimestampMs(a.timestamp) - getTimestampMs(b.timestamp));
+
+            const isLast5ProactiveFromThem = fetchedAll.length >= 5 && fetchedAll.every(m => m.sender === 'character');
+            if (isLast5ProactiveFromThem) {
+              console.log(`[Proactive Check] Skipping proactive messaging for ${char.name} because the last 5 messages are from them.`);
+              updateStatus(char.id, { lastMessageSent: Date.now() });
+              continue;
+            }
+            
             // Try to find your last message time to give context
             let timeContext = "over a day";
-            const messagesRef = collection(db, 'characters', char.id, 'messages');
             // Basis: Using the last message sent by the user
             const q = query(messagesRef, where('sender', '==', 'user'), orderBy('timestamp', 'desc'), limit(1));
             const snapshot = await getDocs(q);
@@ -285,7 +309,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStatuses(newStatuses);
     localStorage.setItem(STATUS_KEY, JSON.stringify(newStatuses));
 
-    // Proactive check 30 seconds after randomization
+    // Proactive check 10 seconds after randomization
     if (proactiveTimeoutRef.current) clearTimeout(proactiveTimeoutRef.current);
     proactiveTimeoutRef.current = setTimeout(runCharacterActions, PROACTIVE_DELAY);
   }, [runCharacterActions]);
