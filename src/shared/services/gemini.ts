@@ -2,7 +2,9 @@ import { GoogleGenAI } from "@google/genai";
 import { Message } from "../types";
 
 const getAI = (customKey?: string | null) => {
-  const apiKey = customKey;
+  const apiKey = (customKey && customKey.trim() !== "")
+    ? customKey
+    : (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is not configured. Please ensure your Rift Key is set.");
   }
@@ -20,13 +22,22 @@ export async function harvestCharacterProfile(name: string, source: string, cust
   IMPORTANT: If you cannot find any information about this character or if they do not exist in the specified source, strictly return only the text "CHARACTER_NOT_FOUND".`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
-    });
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
+    } catch (searchError) {
+      console.warn("Harvest with googleSearch failed, retrying without search grounding:", searchError);
+      response = await ai.models.generateContent({
+        model: model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+    }
 
     const text = response.text?.trim() || "";
     const cleanText = text.toUpperCase().replace(/[^A-Z_]/g, '');

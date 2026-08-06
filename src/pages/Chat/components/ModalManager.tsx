@@ -134,7 +134,7 @@ export const ModalManager = ({
       if (error.message === "CHARACTER_NOT_FOUND") {
         toast.error(`Dimensional Rift Error: Could not find ${capitalize(charName)} in ${capitalize(charSource)}. Please verify the character exists.`);
       } else {
-        toast.error("The rift is currently unstable. Maybe we try again in few minutes.");
+        toast.error(`Rift Error: ${error.message || 'The rift is currently unstable. Please try again.'}`);
       }
     } finally {
       setIsHarvesting(false);
